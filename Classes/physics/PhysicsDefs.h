@@ -1,4 +1,3 @@
-// Classes/physics/PhysicsDefs.h
 #pragma once
 #include "cocos2d.h"
 #include <cstdint>
@@ -15,14 +14,12 @@ namespace phys {
         CAT_CRATE   = 0x0020,
         CAT_SENSOR  = 0x0040,
         CAT_BULLET  = 0x0080,   // NEW
+        CAT_HITBOX  = 0x0100    // NEW (slash cận chiến)
     };
-    inline Mask all() { return 0xFFFFFFFFu; }
+    inline Mask all(){ return 0xFFFFFFFFu; }
 
     enum class Tag : int {
-        NONE = 0,
-        WORLD, PLAYER, ENEMY, ITEM, GATE, CRATE, PLATE, BOSS,
-        STAR, COIN, UPGRADE,
-        BULLET,      // NEW
-        SLASH        // NEW
+        NONE=0, WORLD, PLAYER, ENEMY, ITEM, GATE, CRATE, PLATE, BOSS, STAR, COIN, UPGRADE,
+        BULLET, SLASH                                // NEW
     };
 }

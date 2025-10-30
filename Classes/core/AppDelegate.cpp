@@ -18,9 +18,9 @@ bool AppDelegate::applicationDidFinishLaunching(){
     auto* glview = director->getOpenGLView();
     if(!glview){
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-        glview = GLViewImpl::createWithRect("MyGame", Rect(0,0,1280,720));
+        glview = GLViewImpl::createWithRect("Faterial", Rect(0,0,1920,1080));
 #else
-        glview = GLViewImpl::create("MyGame");
+        glview = GLViewImpl::create("Faterial");
 #endif
         director->setOpenGLView(glview);
     }

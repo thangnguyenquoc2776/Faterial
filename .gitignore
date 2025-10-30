@@ -1,203 +1,97 @@
-# =========================
-# OS junk
-# =========================
+OS junk
+
+
 .DS_Store
-.DS_Store?
 Thumbs.db
 ehthumbs.db
-Icon?
-.Spotlight-V100
-.Trashes
 $RECYCLE.BIN/
 
-# =========================
-# General build artefacts
-# =========================
-bin/
-obj/
-out/
-intermediate/
-temp/
-tmp/
-*.tmp
-*.temp
-*.log
 
-# =========================
-# CMake (multi-platform)
-# =========================
-CMakeCache.txt
+Build artefacts (CMake, VS, Xcode, Android Studio)
+
+build/
+build-/
+_build/
 CMakeFiles/
-cmake-build-*/
+CMakeCache.txt
+cmake-build-/
 CMakeScripts/
 cmake_install.cmake
 CTestTestfile.cmake
 Makefile
 install_manifest.txt
-_compile_commands.json
 compile_commands.json
-# If you want to share compile_commands.json with teammates, remove the line above.
 
-# Common local build dirs at repo root
-build/
-build-*/
-_build/
-_build-*/
 
-# Ninja
-.ninja_deps
-.ninja_log
+Visual Studio
 
-# ccache / clangd
-.ccache/
-.clangd/
-.cache/
 
-# =========================
-# Visual Studio (Windows)
-# =========================
 .vs/
-*.sln.docstates
 *.VC.db
-*.VC.opendb
 *.opendb
 *.ipch
 *.aps
 *.ncb
 *.suo
 *.sdf
-*.opensdf
-*.user
-*.userosscache
-*.sln.cache
-Debug*/
-Release*/
-RelWithDebInfo*/
-MinSizeRel*/
+.opensdf
+.user
+.userosscache
+.sln.cache
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
 x64/
 x86/
-ARM*/
 *.obj
-*.idb
 *.pdb
-*.pch
+*.idb
 *.ilk
 *.tlog
-*.lastbuildstate
-*.cachefile
 *.log
-*.trx
-*.vspscc
-*.vssscc
+*.cachefile
+*.lastbuildstate
 
-# =========================
-# Visual Studio Code
-# =========================
+
+IDE folders
+
+
 .vscode/
+.idea/
 .history/
 
-# =========================
-# JetBrains / CLion / Rider
-# =========================
-.idea/
-*.iml
 
-# =========================
-# Xcode (iOS/macOS)
-# =========================
-DerivedData/
-*.xcuserstate
-*.xcuserdata/
-*.xcworkspacedata
-*.xcworkspace/xcuserdata/
-*.moved-aside
-# Xcode intermediate/build
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3
-build/
-# CocoaPods (optional to ignore; many teams commit Pods)
-Pods/
+Android Studio / Gradle
 
-# =========================
-# Android Studio / Gradle (Android)
-# =========================
+
 .gradle/
 .local.properties
-*.gradle/
-**/build/
 **/.cxx/
 .externalNativeBuild/
 captures/
 *.apk
 *.aab
 output.json
-# Keystores (NEVER commit signing keys)
-*.keystore
-*.jks
 
-# Gradle wrapper caches (keep wrapper JAR/Scripts)
-# (gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties & .jar SHOULD be committed)
-# So we do NOT ignore gradle/wrapper/**
 
-# =========================
-# Cocos2d-x specific layouts
-# =========================
-# Classic Cocos2d-x proj.* folders (Windows/iOS/Android/macOS)
-proj.*/*/build/
-proj.*/*/bin/
-proj.*/*/obj/
-proj.*/*.user
-proj.*/*.userprefs
-proj.*/*.mode1v3
-proj.*/*.mode2v3
-proj.*/*.pbxuser
-proj.*/Debug*/
-proj.*/Release*/
+Python / Node tooling
 
-# Newer Android Studio structure
-proj.android-studio/.idea/
-proj.android-studio/app/build/
-proj.android-studio/.cxx/
-proj.android-studio/.externalNativeBuild/
-
-# If you keep 3rdparty/ or cocos2d/ as submodule/vendor, don't ignore them.
-# But ignore their build artefacts if any:
-**/thirdparty/**/build/
-**/3rdparty/**/build/
-
-# =========================
-# Asset pipeline (optional)
-# =========================
-# Large generated artefacts from texture/audio pipelines
-# Uncomment if you generate these at build-time
-# *.psd
-# *.kra
-# *.wav
-# *.aiff
-
-# =========================
-# Python / Node tooling (if you use helper scripts)
-# =========================
 .venv/
 venv/
-__pycache__/
+pycache/
 *.pyc
 node_modules/
-npm-debug.log*
-pnpm-lock.yaml
-yarn.lock
 
-# =========================
-# Misc
-# =========================
+
+Misc
+
+
 *.orig
 *.rej
 *.patch
 *.swp
 *.swo
 *.bak
-*.bak.*
 *.old
-*.tmp.*
+.tmp.

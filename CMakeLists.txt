@@ -6,6 +6,7 @@ project(${APP_NAME} C CXX)
 
 # ================== MSVC runtime & common defs ==================
 if (MSVC)
+    # /MD (Release) và /MDd (Debug)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
     add_compile_options(/MP)
@@ -27,19 +28,26 @@ endif()
 
 # ================== Game headers & sources ==================
 set(GAME_HEADER
+    # core
     Classes/core/AppDelegate.h
     Classes/core/CrashGuard.h
 
+    # physics
     Classes/physics/PhysicsDefs.h
 
+    # ui
     Classes/ui/HUDLayer.h
 
+    # scenes
     Classes/scenes/MenuScene.h
     Classes/scenes/GameScene.h
 
+    # game base
     Classes/game/Entity.h
     Classes/game/Player.h
     Classes/game/Enemy.h
+
+    # enemies / bosses / objects
     Classes/game/enemies/Goomba.h
     Classes/game/enemies/Spiker.h
     Classes/game/bosses/BossGolem.h
@@ -49,21 +57,29 @@ set(GAME_HEADER
     Classes/game/objects/Crate.h
     Classes/game/objects/Gate.h
     Classes/game/objects/PressurePlate.h
-    Classes/game/Bullet.h
-    Classes/game/SlashHitbox.h
+
+    # weapon (NEW)
+    Classes/game/weapon/Bullet.h
+    Classes/game/weapon/Slash.h
 )
 
 set(GAME_SRC
+    # core
     Classes/core/AppDelegate.cpp
 
+    # ui
     Classes/ui/HUDLayer.cpp
 
+    # scenes
     Classes/scenes/MenuScene.cpp
     Classes/scenes/GameScene.cpp
 
+    # game base
     Classes/game/Entity.cpp
     Classes/game/Player.cpp
     Classes/game/Enemy.cpp
+
+    # enemies / bosses / objects
     Classes/game/enemies/Goomba.cpp
     Classes/game/enemies/Spiker.cpp
     Classes/game/bosses/BossGolem.cpp
@@ -73,8 +89,10 @@ set(GAME_SRC
     Classes/game/objects/Crate.cpp
     Classes/game/objects/Gate.cpp
     Classes/game/objects/PressurePlate.cpp
-    Classes/game/Bullet.cpp
-    Classes/game/SlashHitbox.cpp    
+
+    # weapon (NEW)
+    Classes/game/weapon/Bullet.cpp
+    Classes/game/weapon/Slash.cpp
 )
 
 # ================== Platform glue ==================
@@ -86,7 +104,6 @@ elseif(WINDOWS)
     list(APPEND GAME_HEADER
         proj.win32/main.h
         proj.win32/resource.h
-        # Không dùng CrashGuard.h ở proj.win32 nếu đã có Classes/core/CrashGuard.h
     )
     list(APPEND GAME_SRC
         proj.win32/main.cpp
@@ -125,7 +142,7 @@ elseif(APPLE)
     list(APPEND GAME_SRC ${common_res_files})
 endif()
 
-# ================== Target (tạo target TRƯỚC, rồi mới target_*) ==================
+# ================== Target (tạo trước, rồi mới target_*) ==================
 set(all_code_files ${GAME_HEADER} ${GAME_SRC})
 
 if(NOT ANDROID)
@@ -136,7 +153,7 @@ else()
     target_link_libraries(${APP_NAME} PRIVATE -Wl,--whole-archive cpp_android_spec -Wl,--no-whole-archive)
 endif()
 
-# ================== Include path sau khi đã có target ==================
+# ================== Include paths ==================
 target_include_directories(${APP_NAME}
     PRIVATE Classes
     PRIVATE Classes/core
@@ -147,14 +164,14 @@ target_include_directories(${APP_NAME}
     PRIVATE Classes/game/enemies
     PRIVATE Classes/game/bosses
     PRIVATE Classes/game/objects
-    PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/
+    PRIVATE Classes/game/weapon        # << NEW
+    PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/  # AudioEngine
 )
 
 # ================== Link engine + system libs ==================
 target_link_libraries(${APP_NAME} PRIVATE cocos2d)
 
 if (MSVC)
-    # Tránh lẫn CRT tĩnh khi ta đã /MD
     target_link_options(${APP_NAME} PRIVATE /NODEFAULTLIB:LIBCMT /IGNORE:4098)
     target_link_libraries(${APP_NAME} PRIVATE winmm DbgHelp legacy_stdio_definitions)
 endif()
