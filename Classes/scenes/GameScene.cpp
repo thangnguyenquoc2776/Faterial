@@ -11,6 +11,7 @@
 #include "game/objects/Gate.h"
 #include "physics/PhysicsDefs.h"
 #include "audio/include/AudioEngine.h"
+#include <algorithm>
 
 USING_NS_CC;
 using AE = cocos2d::AudioEngine;
@@ -221,7 +222,12 @@ void GameScene::update(float){
     // Cập nhật Zone theo vị trí camera
     auto vs = Director::getInstance()->getVisibleSize();
     float camX = -_world->getPositionX() + vs.width*0.5f;
-    _zoneIdx = std::clamp( (int)std::ceil(camX / vs.width), 1, _zoneTot );
+    // cũ (gây lỗi vì C++14 chưa có std::clamp)
+    // _zoneIdx = std::clamp( (int)std::ceil(camX / vs.width), 1, _zoneTot );
+
+    int idx = static_cast<int>(std::ceil(camX / vs.width));
+    _zoneIdx = std::max(1, std::min(_zoneTot, idx));   // tương đương clamp
+
     if(_hud) _hud->setZone(_zoneIdx, _zoneTot);
 
     _tryOpenFinalGate();
