@@ -1,38 +1,66 @@
 #include "ui/HUDLayer.h"
-USING_NS_CC;
+using namespace cocos2d;
 
-bool HUDLayer::init(){
-    if(!Layer::init()) return false;
-    auto vs = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
+bool HUDLayer::init() {
+    if (!Layer::init()) return false;
 
-    _lblLives = Label::createWithSystemFont("Lives: 3","Arial",22);
-    _lblScore = Label::createWithSystemFont("Score: 0","Arial",22);
-    _lblStars = Label::createWithSystemFont("Stars: 0/5","Arial",22);
-    _lblZone  = Label::createWithSystemFont("Zone: 1/5","Arial",22);
+    // Tạo label
+    _lLives = Label::createWithSystemFont("HP: ❤❤❤", "Arial", 22);
+    _lScore = Label::createWithSystemFont("Score: 0", "Arial", 22);
+    _lStars = Label::createWithSystemFont("★ 0/5", "Arial", 22);
+    _lZone  = Label::createWithSystemFont("Zone 1/5", "Arial", 22);
 
-    _lblLives->setAnchorPoint({0,1});
-    _lblLives->setPosition(origin + Vec2(10, vs.height-10));
+    for (auto* L : {_lLives, _lScore, _lStars, _lZone}) {
+        L->setColor(Color3B::WHITE);
+        L->enableShadow(Color4B(0,0,0,128), Size(1,-1), 1);
+        addChild(L);
+    }
 
-    _lblScore->setAnchorPoint({1,1});
-    _lblScore->setPosition(origin + Vec2(vs.width-10, vs.height-10));
-
-    _lblStars->setAnchorPoint({1,1});
-    _lblStars->setPosition(origin + Vec2(vs.width-10, vs.height-40));
-
-    _lblZone->setAnchorPoint({0,1});
-    _lblZone->setPosition(origin + Vec2(10, vs.height-40));
-
-    addChild(_lblLives); addChild(_lblScore); addChild(_lblStars); addChild(_lblZone);
+    _layout();
     return true;
 }
-void HUDLayer::setScore(int v){ _score=v; if(_lblScore) _lblScore->setString(StringUtils::format("Score: %d",v)); }
-void HUDLayer::setLives(int v){ _lives=v; if(_lblLives) _lblLives->setString(StringUtils::format("Lives: %d",v)); }
-void HUDLayer::setStars(int have, int need){
-    _stars=have; _need=need;
-    if(_lblStars) _lblStars->setString(StringUtils::format("Stars: %d/%d", _stars, _need));
+
+void HUDLayer::onEnter() {
+    Layer::onEnter();
+    _layout(); // đảm bảo đúng vị trí khi scene vừa vào
 }
-void HUDLayer::setZone(int idx, int total){
-    _zoneIdx=idx; _zoneTot=total;
-    if(_lblZone) _lblZone->setString(StringUtils::format("Zone: %d/%d", _zoneIdx, _zoneTot));
+
+void HUDLayer::_layout() {
+    const auto vs  = Director::getInstance()->getVisibleSize();
+    const auto org = Director::getInstance()->getVisibleOrigin();
+
+    // Trái trên: HP, Score
+    _lLives->setAnchorPoint({0,1});
+    _lLives->setPosition(org + Vec2(16, vs.height - 12));
+
+    _lScore->setAnchorPoint({0,1});
+    _lScore->setPosition(org + Vec2(16, vs.height - 40));
+
+    // Phải trên: Stars, Zone
+    _lStars->setAnchorPoint({1,1});
+    _lStars->setPosition(org + Vec2(vs.width - 16, vs.height - 12));
+
+    _lZone->setAnchorPoint({1,1});
+    _lZone->setPosition(org + Vec2(vs.width - 16, vs.height - 40));
+}
+
+// ---------- API cập nhật ----------
+void HUDLayer::setLives(int v) {
+    v = std::max(0, v);
+    std::string hearts;
+    for (int i = 0; i < v; ++i) hearts += u8"❤";
+    if (hearts.empty()) hearts = "0";
+    _lLives->setString("HP: " + hearts);
+}
+
+void HUDLayer::setScore(int v) {
+    _lScore->setString("Score: " + std::to_string(v));
+}
+
+void HUDLayer::setStars(int have, int need) {
+    _lStars->setString("★ " + std::to_string(have) + "/" + std::to_string(need));
+}
+
+void HUDLayer::setZone(int cur, int total) {
+    _lZone->setString("Zone " + std::to_string(cur) + "/" + std::to_string(total));
 }

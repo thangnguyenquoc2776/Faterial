@@ -1,11 +1,14 @@
 #pragma once
 #include "cocos2d.h"
+#include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
 
-class Slash : public cocos2d::Node {
+#pragma once
+#include "game/Entity.h"
+
+class Slash : public Entity {
 public:
-    static Slash* create(float w, float h, float lifetime=0.12f);
-    bool initWith(float w, float h, float lifetime);
-private:
-    float _life=0.12f;
+    static Slash* create(const cocos2d::Vec2& origin, float angleRad,
+                         float sizeOrRange, float durationSec = 0.15f);
+    bool init() override { return Entity::init(); }
 };

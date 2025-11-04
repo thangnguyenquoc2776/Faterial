@@ -1,46 +1,79 @@
 #pragma once
 #include "cocos2d.h"
-class Player; class HUDLayer; class Gate; class BossGolem;
+#include "ui/HUDLayer.h"
+#include "game/Player.h"
+#include "game/Enemy.h"
+#include "game/map/LevelBuilder.h"
+#include "physics/PhysicsDefs.h"
 
-class GameScene : public cocos2d::Scene {
+USING_NS_CC;
+
+class GameScene : public Layer {
 public:
+    static Scene* createScene();
     CREATE_FUNC(GameScene);
-    static cocos2d::Scene* createScene();
+
     bool init() override;
     void onEnter() override;
+    void onExit() override;
     void update(float dt) override;
 
 private:
-    cocos2d::Node* _world=nullptr;
-    float _worldW=0.f, _worldH=0.f;
+    // ---- WORLD/PHYSICS ----
+    Scene*        _scene = nullptr;
+    PhysicsWorld* _world = nullptr; // <-- chỉ lấy trong onEnter
+    Size _vs;
+    Vec2 _origin;
 
-    Player*   _player=nullptr;
-    HUDLayer* _hud=nullptr;
-    Gate*     _gateFinal=nullptr;
-    BossGolem* _boss=nullptr;
+    // ---- PLAYER/ENEMY ----
+    Player* _player = nullptr;
+    Vector<Enemy*> _enemies;
 
-    int _score=0, _lives=3;
-    int _stars=0, _starsNeed=5;
-    int _zoneIdx=1, _zoneTot=5;
-    int _bgmId=-1;
+    // ---- CAMERA/ZONES (map liên tiếp) ----
+    int   _segment       = 0;
+    int   _segmentCount  = 1;
+    float _segmentWidth  = 0.f;
+    float _groundTop     = 0.f;  // y-top mặt đất chuẩn để check rơi
+    float _camL = 0.f, _camR = 0.f;
 
-    void _setupWorld();
-    void _buildZones();
-    void _spawnPlayer(const cocos2d::Vec2& p);
+    // ---- UI/HUD ----
+    Camera*   _uiCam   = nullptr;
+    HUDLayer* _hud     = nullptr;
+    Label*    _overlay = nullptr;
+
+    int  _score     = 0;
+    int  _lives     = 3;
+    int  _starsHave = 0;
+    int  _starsNeed = 5;
+    bool _gameOver  = false;
+    bool _gameWin   = false;
+
+    // ---- INPUT/LISTENERS ----
+    EventListenerKeyboard*       _kb      = nullptr;
+    EventListenerPhysicsContact* _contact = nullptr;
+
+private:
+    // ===== UI =====
+    void buildUICamera();
+    void buildHUD();
+
+    // ===== INPUT =====
     void _bindInput();
-    void _followCamera(float);
-    void _attachTargetsToEnemies();
+    void _doShoot();
+    void _doSlash();
 
-    bool _onContactBegin(cocos2d::PhysicsContact& c);
-    bool _onContactSeparate(cocos2d::PhysicsContact& c);
-    bool _match(cocos2d::Node* n, uint32_t cat, int tag = 0);
+    // ===== CONTACT =====
+    bool _onContactBegin(PhysicsContact& c);
+    void _onContactSeparate(PhysicsContact& c);
 
-    void _addScore(int s);
-    void _pickupStar();
-    void _tryOpenFinalGate();
-    void _spawnBullet(int facing);
-    void _spawnSlash(int facing);
+    // ===== HUD/STATE =====
+    void _setLives(int v);
+    void _addScore(int v);
+    void _setStars(int have, int need);
+    void _checkWin();
+    void _showOverlay(const std::string& text);
 
-    void _playSfx(const std::string& rel, float vol=1.f);
-    void _playBgm(const std::string& rel, bool loop, float vol);
+    // ===== FLOW =====
+    void _restartLevel();
+    void _returnMenu();
 };

@@ -1,33 +1,54 @@
 #include "game/weapon/Bullet.h"
-USING_NS_CC;
+#include "physics/CCPhysicsBody.h"
+#include "physics/CCPhysicsShape.h"
+#include "2d/CCDrawNode.h"
 
-Bullet* Bullet::create(const Vec2& dir, float speed, float life){
-    auto p=new(std::nothrow) Bullet();
-    if(p && p->initWith(dir,speed,life)){ p->autorelease(); return p; }
-    CC_SAFE_DELETE(p); return nullptr;
-}
-bool Bullet::initWith(const Vec2& dir, float speed, float life){
-    if(!Node::init()) return false;
-    _dir = dir.getNormalized();
-    _speed = speed; _life = life;
+using namespace cocos2d;
 
-    auto dn = DrawNode::create();
-    dn->drawSolidCircle(Vec2::ZERO, 6.f, 0, 24, Color4F(1.f,0.95f,0.1f,1));
-    addChild(dn);
+Bullet* Bullet::create(const Vec2& origin, const Vec2& velocity, float lifeSec) {
+    auto p = new (std::nothrow) Bullet();
+    if (p && p->init()) {
+        p->autorelease();
 
-    _body = PhysicsBody::createCircle(6.f, PhysicsMaterial(0,0,0));
-    _body->setDynamic(true);
-    _body->setGravityEnable(false);
-    _body->setRotationEnable(false);
-    _body->setCategoryBitmask(phys::CAT_BULLET);
-    _body->setCollisionBitmask(phys::CAT_WORLD|phys::CAT_ENEMY);
-    _body->setContactTestBitmask(phys::all());
-    setPhysicsBody(_body);
+        // Tag gameplay
+        p->setTagEx(phys::Tag::BULLET);
 
-    scheduleUpdate();
-    return true;
-}
-void Bullet::update(float dt){
-    if(_body) _body->setVelocity(_dir * _speed);
-    _life -= dt; if(_life<=0.f) removeFromParent();
+        // Vị trí ban đầu
+        p->setPosition(origin);
+
+        // Vẽ dấu chấm nhỏ cho dễ nhìn
+        auto dot = DrawNode::create();
+        dot->drawSolidCircle(Vec2::ZERO, 4.5f, 0, 12, Color4F(1.f, 0.95f, 0.2f, 1.f));
+        p->addChild(dot);
+
+        // Thân vật lý
+        auto body = PhysicsBody::createCircle(4.5f, PhysicsMaterial(0,0,0));
+        body->setDynamic(true);
+        body->setGravityEnable(false);
+        body->setRotationEnable(false);
+
+        // Masks theo PhysicsDefs.h (C++14-safe)
+        body->setCategoryBitmask(static_cast<int>(phys::CAT_BULLET));
+        body->setCollisionBitmask(static_cast<int>(phys::MASK_BULLET));
+        body->setContactTestBitmask(static_cast<int>(phys::MASK_BULLET));
+
+        // Gắn tag lên shape để contact listener nhận diện nhanh
+        if (!body->getShapes().empty())
+            body->getShapes().front()->setTag(static_cast<int>(phys::Tag::BULLET));
+
+        p->addComponent(body);
+
+        // Bay theo vận tốc đầu vào
+        body->setVelocity(velocity);
+
+        // Tự hủy sau lifeSec
+        p->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([p]{ p->removeFromParent(); }),
+            nullptr
+        ));
+        return p;
+    }
+    CC_SAFE_DELETE(p);
+    return nullptr;
 }

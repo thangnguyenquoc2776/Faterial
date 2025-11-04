@@ -1,16 +1,17 @@
 #pragma once
 #include "cocos2d.h"
+#include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
 
-class Bullet : public cocos2d::Node {
+class Bullet : public Entity {
 public:
-    static Bullet* create(const cocos2d::Vec2& dir, float speed=720.f, float life=1.8f);
-    bool initWith(const cocos2d::Vec2& dir, float speed, float life);
-    void update(float dt) override;
+    CREATE_FUNC(Bullet);
 
-private:
-    cocos2d::PhysicsBody* _body=nullptr;
-    cocos2d::Vec2 _dir{1.f,0.f};
-    float _speed=720.f;
-    float _life=1.8f;
+    // Tạo bullet tại origin, bay với velocity, tự hủy sau lifeSec
+    static Bullet* create(const cocos2d::Vec2& origin,
+                          const cocos2d::Vec2& velocity,
+                          float lifeSec);
+
+protected:
+    bool init() override { return Entity::init(); }
 };

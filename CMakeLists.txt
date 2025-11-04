@@ -58,9 +58,12 @@ set(GAME_HEADER
     Classes/game/objects/Gate.h
     Classes/game/objects/PressurePlate.h
 
-    # weapon (NEW)
+    # weapon
     Classes/game/weapon/Bullet.h
     Classes/game/weapon/Slash.h
+
+    # map (NEW)
+    Classes/game/map/LevelBuilder.h
 )
 
 set(GAME_SRC
@@ -90,9 +93,12 @@ set(GAME_SRC
     Classes/game/objects/Gate.cpp
     Classes/game/objects/PressurePlate.cpp
 
-    # weapon (NEW)
+    # weapon
     Classes/game/weapon/Bullet.cpp
     Classes/game/weapon/Slash.cpp
+
+    # map (NEW)
+    Classes/game/map/LevelBuilder.cpp
 )
 
 # ================== Platform glue ==================
@@ -142,7 +148,7 @@ elseif(APPLE)
     list(APPEND GAME_SRC ${common_res_files})
 endif()
 
-# ================== Target (tạo trước, rồi mới target_*) ==================
+# ================== Target ==================
 set(all_code_files ${GAME_HEADER} ${GAME_SRC})
 
 if(NOT ANDROID)
@@ -164,7 +170,8 @@ target_include_directories(${APP_NAME}
     PRIVATE Classes/game/enemies
     PRIVATE Classes/game/bosses
     PRIVATE Classes/game/objects
-    PRIVATE Classes/game/weapon        # << NEW
+    PRIVATE Classes/game/weapon
+    PRIVATE Classes/game/map            # << NEW
     PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/  # AudioEngine
 )
 
@@ -196,6 +203,6 @@ if(LINUX OR WINDOWS)
     cocos_copy_target_res(${APP_NAME} LINK_TO ${APP_RES_DIR} FOLDERS ${GAME_RES_FOLDER})
 endif()
 
-# Tuỳ chọn:
+# Tuỳ chọn C++ standard (nếu cần)
 # set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD 17)
 # set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)

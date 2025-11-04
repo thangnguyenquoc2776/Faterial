@@ -1,49 +1,57 @@
 #pragma once
-#include "game/Entity.h"
+#include "cocos2d.h"
 #include "physics/PhysicsDefs.h"
+#include "game/Entity.h"
 
-class Player : public cocos2d::Sprite {
+class Player : public Entity {
 public:
-    static Player* create();
-    bool init() override;
+    // Factory
+    static Player* create(const std::string& frame = "");
 
-    void enablePhysics(const cocos2d::Vec2& pos);
-    void setMoveDir(const cocos2d::Vec2& dir);
-    void jump();
-    void fastFall();
-    void update(float dt) override;
+    // cocos2d lifecycle
+    bool init() override;                         // bắt buộc cho cocos2d
+    bool initWithFrame(const std::string& frame); // khởi tạo kèm frame
 
-    // combat
-    void shoot();                 // J
-    void slash();                 // K
+    // Physics (GameScene đang gọi bản này)
+    void enablePhysics(const cocos2d::Vec2& pos,
+                       const cocos2d::Size& bodySize = cocos2d::Size::ZERO);
 
-    // damage / hp
-    void takeDamage(int dmg, const cocos2d::Vec2& knock);
+    // Điều khiển
+    void setMoveDir(const cocos2d::Vec2& dir);  // [-1..1] mỗi trục
+    void jump();                                // chỉ nhảy khi đang đứng đất
+    void incFoot(int delta);                    // +1 chạm đất, -1 rời đất
 
-    // expose
-    cocos2d::PhysicsBody* getBody() const { return _body; }
-    int hp() const { return _hp; }
-    int hpMax() const { return _hpMax; }
-    bool invuln() const { return _iframe > 0.f; }
+    // Combat/HP
+    void hurt(int dmg);                         // không knockback
+    void hurt(int dmg, const cocos2d::Vec2& knockImpulse);
 
-    // ground sensor API (Scene sẽ gọi khi va chạm chân)
-    void footBegin();
-    void footEnd();
+    // Tick di chuyển
+    void updateMove(float dt);
+
+    // Query (GameScene dùng)
+    int  facing() const     { return _facing; }      // -1 trái, +1 phải
+    bool invincible() const { return _invincible; }
+
+    // Tham số tuning
+    int   hp      = 3;
+    int   maxHp   = 3;
+    float moveSpeed   = 180.f;   // px/s
+    float jumpImpulse = 380.f;   // lực nhảy
+    float airControl  = 0.6f;    // 0..1
 
 private:
-    cocos2d::PhysicsBody* _body=nullptr;
-    cocos2d::Vec2 _moveDir{0.f,0.f};
-    float _speed=240.f;
+    cocos2d::Sprite*      _sprite    = nullptr;
+    cocos2d::PhysicsBody* _body      = nullptr;
+    cocos2d::Vec2         _moveDir   = cocos2d::Vec2::ZERO;
+    int   _footContacts = 0;
+    int   _facing       = +1;
+    bool  _invincible   = false;
 
-    // ground
-    int _footContacts=0;
-    bool _onGround=false;
+    // Helpers
+    cocos2d::PhysicsBody* buildOrUpdateBody(const cocos2d::Size& wantSize);
+    void applyPlayerMasks();
+    void applyVelocity(float dt);
 
-    // hp
-    int _hpMax=5;
-    int _hp=5;
-    float _iframe=0.f;     // giây còn lại được miễn sát thương
-
-    // facing
-    int _facing=1;         // -1 trái, +1 phải
+    // Shim nội bộ để bật/tắt body (dùng bởi enablePhysics(pos,...))
+    void enableBody(bool on, const cocos2d::Size& bodySize);
 };

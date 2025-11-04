@@ -1,27 +1,68 @@
 #include "game/weapon/Slash.h"
-USING_NS_CC;
+#include "physics/CCPhysicsBody.h"
+#include "physics/CCPhysicsShape.h"
+#include "2d/CCDrawNode.h"
+#include <algorithm>
+#include <cmath>
 
-Slash* Slash::create(float w, float h, float lifetime){
-    auto p=new(std::nothrow) Slash();
-    if(p && p->initWith(w,h,lifetime)){ p->autorelease(); return p; }
-    CC_SAFE_DELETE(p); return nullptr;
-}
-bool Slash::initWith(float w, float h, float lifetime){
-    if(!Node::init()) return false;
-    _life=lifetime;
+using namespace cocos2d;
 
-    auto dn=DrawNode::create();
-    dn->drawSolidRect({-w/2.f,-h/2.f},{w/2.f,h/2.f}, Color4F(0.2f,1.f,1.f,0.35f));
-    addChild(dn);
+Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, float durationSec) {
+    auto p = new (std::nothrow) Slash();
+    if (p && p->init()) {
+        p->autorelease();
 
-    auto b = PhysicsBody::createBox(Size(w,h));
-    b->setDynamic(false);
-    b->setCategoryBitmask(phys::CAT_HITBOX);
-    b->setCollisionBitmask(0);
-    b->setContactTestBitmask(phys::CAT_ENEMY);
-    b->setEnabled(true);
-    setPhysicsBody(b);
+        // Tag gameplay mở rộng
+        p->setTagEx(phys::Tag::SLASH);
+        p->setPosition(origin);
 
-    runAction(Sequence::create(DelayTime::create(_life), RemoveSelf::create(), nullptr));
-    return true;
+        // Vẽ nhát chém đơn giản để debug (dạng tam giác)
+        auto dn = DrawNode::create();
+        float r  = std::max(8.0f, sizeOrRange);
+
+        Vec2 a( std::cos(angleRad), std::sin(angleRad) );
+        Vec2 p0 = Vec2::ZERO;
+        Vec2 p1 = a * r;
+        Vec2 p2 = a.rotateByAngle(Vec2::ZERO, 0.35f) * (r * 0.75f);
+
+        Vec2 tri[3] = { p0, p1, p2 };
+        dn->drawSolidPoly(tri, 3, Color4F(1.f, 1.f, 0.4f, 0.35f));
+        p->addChild(dn);
+
+        // Body sensor hình hộp mỏng, đặt lệch về hướng tấn công
+        auto body = PhysicsBody::create();
+        body->setDynamic(false);          // sensor tạm thời
+        body->setGravityEnable(false);
+        body->setRotationEnable(false);
+
+        // Hộp mỏng theo hướng chém (tạo shape với OFFSET ngay từ factory)
+        const float boxW = r * 0.9f;
+        const float boxH = std::max(10.0f, r * 0.35f);
+        Vec2 offset = a * (r * 0.45f);
+
+        auto shape = PhysicsShapeBox::create(Size(boxW, boxH), PhysicsMaterial(0,0,0), offset);
+        shape->setSensor(true);
+        shape->setTag(static_cast<int>(phys::ShapeTag::SLASH));
+        body->addShape(shape); // cocos2d-x 3.x: addShape chỉ nhận 1 tham số
+
+        // Masks: sensor chỉ cần contact, không collide cứng
+        body->setCategoryBitmask(static_cast<int>(phys::CAT_SENSOR));
+        body->setCollisionBitmask(0);
+        body->setContactTestBitmask(static_cast<int>(phys::MASK_SENSOR));
+
+        p->addComponent(body);
+
+        // Xoay để visual khớp hướng
+        p->setRotation(-CC_RADIANS_TO_DEGREES(angleRad));
+
+        // Tự hủy sau durationSec
+        p->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, durationSec)),
+            CallFunc::create([p]{ p->removeFromParent(); }),
+            nullptr
+        ));
+        return p;
+    }
+    CC_SAFE_DELETE(p);
+    return nullptr;
 }
