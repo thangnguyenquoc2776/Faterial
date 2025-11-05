@@ -96,6 +96,12 @@ inline void setMasks(cocos2d::Node* node, Mask category, Mask collide, Mask cont
     setMasks(node->getPhysicsBody(), category, collide, contact);
 }
 
+// đặt TÂM thân ở ngay phía trên mép trên topY, có skin nhỏ để không "lún"
+inline float yOnTop(float topY, float bodyH, float skin = 0.5f) {
+    return topY + bodyH * 0.5f + skin;
+}
+
+
 } // namespace phys
 
 // ------------------------------------------------------------

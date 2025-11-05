@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Exporter v3.3 — TXT + DOCX (progress) ở chế độ SIMPLE-TNR
-- Tất cả văn bản trong DOCX đều Times New Roman 14 (không italic, không shading).
-- Không dùng style code đặc biệt; coi code như văn bản thường để AI đọc dễ.
+Exporter v3.4 — TXT + DOCX (SIMPLE-TNR) with OVERVIEW (Tree + Manifest)
+- Tất cả văn bản trong DOCX: Times New Roman 14, không italic/shading, không code-style.
+- Phần đầu tài liệu: PROJECT TREE (ASCII) + FILE MANIFEST (dir_rel/filename + size + status).
 - Lọc phạm vi: --include-dirs, --include-names, --names-root-only.
 - Chia nhỏ đầu ra (--split-chars), log CSV, report MD.
 - Ví dụ: chỉ lấy Classes/**/*.cpp|.h + CMakeLists.txt (gốc).
@@ -159,7 +159,7 @@ def init_docx_simple() -> Document:
     normal._element.rPr.rFonts.set(qn('w:eastAsia'), 'Times New Roman')
     normal.font.size = Pt(14)
 
-    # Style nhẹ cho nhãn "Folder/File" (vẫn TNR 14, chỉ đậm nhẹ)
+    # Style nhẹ cho nhãn "Folder/File" (vẫn TNR 14, chỉ đậm)
     if 'LabelBold' not in [s.name for s in doc.styles]:
         st = doc.styles.add_style('LabelBold', WD_STYLE_TYPE.PARAGRAPH)
     else:
@@ -179,7 +179,7 @@ def add_plain_paragraph(doc: Document, text: str, bold=False):
     r.bold = bool(bold)
 
 def add_text_block(doc: Document, text: str):
-    """Chèn nội dung văn bản (code) như đoạn thường, TNR 14, giữ \n."""
+    """Chèn nội dung văn bản (code) như đoạn thường, TNR 14, giữ \\n."""
     safe = sanitize_for_docx(text)
     n = len(safe)
     start = 0
@@ -192,6 +192,110 @@ def add_text_block(doc: Document, text: str):
         run.font.size = Pt(14)
         start += DOCX_RUN_CHUNK
 
+# --------- OVERVIEW (TREE + MANIFEST) ----------
+def collect_dir_hierarchy(grouped: Dict[str, List[Dict[str, Any]]]) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
+    """
+    Trả về:
+      - children_dirs[parent_dir] = [child_dir, ...]
+      - files_in_dir[dir] = [filename, ...]
+    Bổ sung cả các thư mục tổ tiên để tree không bị thiếu mắt xích.
+    """
+    # Tập hợp tất cả thư mục đã có + tổ tiên
+    all_dirs = set(grouped.keys())
+    for d in list(all_dirs):
+        if d == ".":
+            continue
+        cur = d
+        while True:
+            par = os.path.dirname(cur) or "."
+            if par not in all_dirs:
+                all_dirs.add(par)
+            if par == ".":
+                break
+            cur = par
+
+    children_dirs: Dict[str, List[str]] = defaultdict(list)
+    files_in_dir: Dict[str, List[str]] = defaultdict(list)
+
+    for d in all_dirs:
+        files_in_dir[d] = []
+
+    for d, items in grouped.items():
+        for it in items:
+            files_in_dir[d].append(it["fname"])
+
+    # Sắp xếp tên thư mục con
+    for d in sorted(all_dirs):
+        if d == ".":
+            par = None
+        else:
+            par = os.path.dirname(d) or "."
+        if par is not None and d != ".":
+            children_dirs[par].append(d)
+
+    for k in children_dirs:
+        # chỉ giữ tên con là basename, nhưng lưu kèm đường dẫn đầy đủ để render đúng thứ tự
+        children_dirs[k] = sorted(children_dirs[k], key=lambda x: x)
+
+    # Sort files
+    for d in files_in_dir:
+        files_in_dir[d] = sorted(files_in_dir[d], key=lambda x: x.lower())
+
+    return children_dirs, files_in_dir
+
+def render_ascii_tree(children_dirs: Dict[str, List[str]], files_in_dir: Dict[str, List[str]]) -> str:
+    """
+    Vẽ ASCII tree kiểu:
+    ./
+    ├── CMakeLists.txt
+    └── Classes
+        ├── core
+        │   └── AppDelegate.cpp
+        ...
+    """
+    lines: List[str] = []
+
+    def name_of(path_rel: str) -> str:
+        return "." if path_rel == "." else os.path.basename(path_rel)
+
+    def recurse(dir_rel: str, prefix: str):
+        # Files trước
+        files = files_in_dir.get(dir_rel, [])
+        dirs  = children_dirs.get(dir_rel, [])
+        total = len(files) + len(dirs)
+        idx = 0
+
+        # Files
+        for i, fn in enumerate(files):
+            idx += 1
+            is_last = (idx == total)
+            lines.append(f"{prefix}{'└──' if is_last and not dirs else '├──'} {fn}")
+
+        # Dirs
+        for j, child in enumerate(dirs):
+            is_last_dir = (j == len(dirs) - 1)
+            connector = "└──" if is_last_dir else "├──"
+            lines.append(f"{prefix}{connector} {name_of(child)}")
+            new_prefix = prefix + ("    " if is_last_dir else "│   ")
+            recurse(child, new_prefix)
+
+    # Root
+    lines.append("./")
+    recurse(".", "")
+    return "\n".join(lines) + "\n"
+
+def render_manifest(grouped: Dict[str, List[Dict[str, Any]]]) -> str:
+    """
+    Liệt kê đường dẫn + size + status (ok/skipped/error).
+    """
+    rows: List[str] = []
+    for d in sorted(grouped.keys(), key=lambda s: (0 if s=="." else 1, s)):
+        for it in sorted(grouped[d], key=lambda x: x["fname"].lower()):
+            size = it.get("size", -1)
+            st   = it.get("status","")
+            path = f"{d}/{it['fname']}" if d != "." else it['fname']
+            rows.append(f"- {path} — {size} bytes — {st}")
+    return "\n".join(rows) + ("\n" if rows else "")
 
 # --------- worker ----------
 def process_one_file(args):
@@ -211,7 +315,8 @@ def write_outputs_split(
     grouped: Dict[str, List[Dict[str, Any]]],
     out_txt_base: Path,
     out_docx_base: Path,
-    split_chars: int
+    split_chars: int,
+    add_overview: bool
 ):
     # TXT
     txt_parts: List[Path] = []
@@ -257,6 +362,36 @@ def write_outputs_split(
             doc = init_docx_simple()
             docx_chars = 0
 
+    # ---------- OVERVIEW (only at the very beginning / first part) ----------
+    if add_overview:
+        children_dirs, files_in_dir = collect_dir_hierarchy(grouped)
+        tree_text = render_ascii_tree(children_dirs, files_in_dir)
+        manifest_text = render_manifest(grouped)
+
+        # TXT overview
+        txt_write("===== PROJECT TREE =====\n")
+        txt_write(tree_text + "\n")
+        txt_write("===== FILE MANIFEST =====\n")
+        txt_write(manifest_text + "\n\n")
+
+        # DOCX overview
+        add_plain_paragraph(doc, "===== PROJECT TREE =====", bold=True)
+        docx_chars += len("===== PROJECT TREE =====")
+        add_text_block(doc, tree_text)
+        docx_chars += len(tree_text)
+        docx_rotate_if_needed()
+
+        add_plain_paragraph(doc, "===== FILE MANIFEST =====", bold=True)
+        docx_chars += len("===== FILE MANIFEST =====")
+        add_text_block(doc, manifest_text)
+        docx_chars += len(manifest_text)
+        docx_rotate_if_needed()
+
+        # Ngăn cách
+        add_plain_paragraph(doc, "", bold=False)
+        txt_write("\n")
+
+    # ---------- Nội dung theo Folder/File ----------
     for dir_rel in sorted(grouped.keys(), key=lambda s: (0 if s=="." else 1, s)):
         # TXT
         txt_write(f"Folder {dir_rel}\n")
@@ -300,7 +435,8 @@ def export_project(
     split_chars: int,
     include_dirs: Optional[List[str]],
     include_names: Optional[List[str]],
-    names_root_only: bool
+    names_root_only: bool,
+    overview: bool
 ):
     max_bytes = size_limit_mb * 1024 * 1024
     root = root.resolve()
@@ -356,7 +492,7 @@ def export_project(
 
     # Ghi TXT/DOCX
     with tqdm(total=1, desc="Đang ghi TXT/DOCX") as bar2:
-        txt_parts, docx_parts = write_outputs_split(grouped, out_txt, out_docx, split_chars)
+        txt_parts, docx_parts = write_outputs_split(grouped, out_txt, out_docx, split_chars, add_overview=overview)
         bar2.update(1)
 
     # Log CSV
@@ -411,6 +547,8 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     ap.add_argument("--include-dirs", nargs="*", default=None, help="Chỉ lấy các thư mục (prefix, vd: Classes)")
     ap.add_argument("--include-names", nargs="*", default=None, help="Thêm các file theo tên (vd: CMakeLists.txt)")
     ap.add_argument("--names-root-only", action="store_true", help="Các --include-names chỉ áp dụng ở root")
+    # Overview
+    ap.add_argument("--no-overview", action="store_true", help="Tắt phần PROJECT TREE + FILE MANIFEST ở đầu")
     return ap.parse_args(argv)
 
 def main():
@@ -454,6 +592,7 @@ def main():
     print(f"Include dirs   : {args.include_dirs}")
     print(f"Include names  : {args.include_names} (root-only={args.names_root_only})")
     print(f"Split chars    : {args.split_chars}")
+    print(f"Overview       : {not args.no_overview}")
     print("======================")
 
     export_project(
@@ -472,6 +611,7 @@ def main():
         include_dirs=args.include_dirs,
         include_names=args.include_names,
         names_root_only=args.names_root_only,
+        overview=(not args.no_overview),
     )
 
 if __name__ == "__main__":

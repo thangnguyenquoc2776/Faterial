@@ -6,10 +6,9 @@ project(${APP_NAME} C CXX)
 
 # ================== MSVC runtime & common defs ==================
 if (MSVC)
-    # /MD (Release) và /MDd (Debug)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
-    add_compile_options(/MP)
+    add_compile_options(/MP /utf-8)
 endif()
 
 # ================== Cocos2d-x engine ==================
@@ -47,22 +46,26 @@ set(GAME_HEADER
     Classes/game/Player.h
     Classes/game/Enemy.h
 
-    # enemies / bosses / objects
+    # enemies / bosses
     Classes/game/enemies/Goomba.h
     Classes/game/enemies/Spiker.h
     Classes/game/bosses/BossGolem.h
+
+    # objects
     Classes/game/objects/Coin.h
     Classes/game/objects/Star.h
     Classes/game/objects/Upgrade.h
     Classes/game/objects/Crate.h
     Classes/game/objects/Gate.h
     Classes/game/objects/PressurePlate.h
+    Classes/game/objects/Chest.h
 
     # weapon
     Classes/game/weapon/Bullet.h
     Classes/game/weapon/Slash.h
 
-    # map (NEW)
+    # loot & map
+    Classes/game/loot/LootTable.h
     Classes/game/map/LevelBuilder.h
 )
 
@@ -82,30 +85,36 @@ set(GAME_SRC
     Classes/game/Player.cpp
     Classes/game/Enemy.cpp
 
-    # enemies / bosses / objects
+    # enemies / bosses
     Classes/game/enemies/Goomba.cpp
     Classes/game/enemies/Spiker.cpp
     Classes/game/bosses/BossGolem.cpp
+
+    # objects
     Classes/game/objects/Coin.cpp
     Classes/game/objects/Star.cpp
     Classes/game/objects/Upgrade.cpp
     Classes/game/objects/Crate.cpp
     Classes/game/objects/Gate.cpp
     Classes/game/objects/PressurePlate.cpp
+    Classes/game/objects/Chest.cpp
 
     # weapon
     Classes/game/weapon/Bullet.cpp
     Classes/game/weapon/Slash.cpp
 
-    # map (NEW)
+    # loot & map
+    Classes/game/loot/LootTable.cpp
     Classes/game/map/LevelBuilder.cpp
 )
 
 # ================== Platform glue ==================
 if(ANDROID)
     list(APPEND GAME_SRC proj.android/app/jni/hellocpp/main.cpp)
+
 elseif(LINUX)
     list(APPEND GAME_SRC proj.linux/main.cpp)
+
 elseif(WINDOWS)
     list(APPEND GAME_HEADER
         proj.win32/main.h
@@ -116,6 +125,7 @@ elseif(WINDOWS)
         proj.win32/game.rc
         ${common_res_files}
     )
+
 elseif(APPLE)
     if(IOS)
         list(APPEND GAME_HEADER
@@ -171,21 +181,45 @@ target_include_directories(${APP_NAME}
     PRIVATE Classes/game/bosses
     PRIVATE Classes/game/objects
     PRIVATE Classes/game/weapon
-    PRIVATE Classes/game/map            # << NEW
+    PRIVATE Classes/game/loot
+    PRIVATE Classes/game/map
     PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/  # AudioEngine
 )
 
 # ================== Link engine + system libs ==================
 target_link_libraries(${APP_NAME} PRIVATE cocos2d)
-
 if (MSVC)
     target_link_options(${APP_NAME} PRIVATE /NODEFAULTLIB:LIBCMT /IGNORE:4098)
     target_link_libraries(${APP_NAME} PRIVATE winmm DbgHelp legacy_stdio_definitions)
 endif()
 
-# ================== App config & copy resources ==================
+# ================== App config & copy resources/DLL ==================
 setup_cocos_app_config(${APP_NAME})
 
+# Ép exe & dll vào build/bin (không tạo Debug/Release con)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+foreach(cfg Debug Release RelWithDebInfo MinSizeRel)
+    set_target_properties(${APP_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/bin
+        LIBRARY_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/bin
+        ARCHIVE_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/lib
+    )
+endforeach()
+
+# Windows: copy DLL engine (glew, glfw, openal, …) về cạnh .exe
+if(WINDOWS)
+    cocos_copy_target_dll(${APP_NAME})
+endif()
+
+# Copy Resources vào cạnh .exe (Windows/Linux/macOS)
+if(LINUX OR WINDOWS)
+    cocos_get_resource_path(APP_RES_DIR ${APP_NAME})
+    cocos_copy_target_res(${APP_NAME} LINK_TO ${APP_RES_DIR} FOLDERS ${GAME_RES_FOLDER})
+endif()
+
+# (macOS/iOS) gán tài nguyên UI
 if(APPLE)
     set_target_properties(${APP_NAME} PROPERTIES RESOURCE "${APP_UI_RES}")
     if(MACOSX)
@@ -194,15 +228,4 @@ if(APPLE)
         set_xcode_property(${APP_NAME} INFOPLIST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/proj.ios_mac/ios/Info.plist")
         set_xcode_property(${APP_NAME} ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon")
     endif()
-elseif(WINDOWS)
-    cocos_copy_target_dll(${APP_NAME})
 endif()
-
-if(LINUX OR WINDOWS)
-    cocos_get_resource_path(APP_RES_DIR ${APP_NAME})
-    cocos_copy_target_res(${APP_NAME} LINK_TO ${APP_RES_DIR} FOLDERS ${GAME_RES_FOLDER})
-endif()
-
-# Tuỳ chọn C++ standard (nếu cần)
-# set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD 17)
-# set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
