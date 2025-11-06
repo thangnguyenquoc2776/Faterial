@@ -87,12 +87,17 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
 
 void Player::applyPlayerMasks() {
     if (!_body) return;
+
+    // va chạm cứng: như cũ
     const phys::Mask collide =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
         phys::CAT_GATE  | phys::CAT_CRATE;
+
+    // LIÊN HỆ (contact) — THÊM CAT_ENEMY_PROJ  ⬇⬇⬇
     const phys::Mask contact =
-        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ITEM   |
-        phys::CAT_BULLET| phys::CAT_SENSOR;
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ENEMY_PROJ |
+        phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
+
     phys::setMasks(_body, phys::CAT_PLAYER, collide, contact);
 }
 

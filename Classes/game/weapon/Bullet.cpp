@@ -1,7 +1,9 @@
 #include "game/weapon/Bullet.h"
+#include "physics/PhysicsDefs.h"          // <-- cần để dùng phys::CAT_*, MASK_*, Tag
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
 #include "2d/CCDrawNode.h"
+#include <algorithm>                       // <-- std::max
 
 using namespace cocos2d;
 
@@ -10,8 +12,9 @@ Bullet* Bullet::create(const Vec2& origin, const Vec2& velocity, float lifeSec) 
     if (p && p->init()) {
         p->autorelease();
 
-        // Tag gameplay
+        // Tag gameplay + name cho dễ debug / lọc va chạm
         p->setTagEx(phys::Tag::BULLET);
+        p->setName("player_proj");
 
         // Vị trí ban đầu
         p->setPosition(origin);
@@ -27,7 +30,7 @@ Bullet* Bullet::create(const Vec2& origin, const Vec2& velocity, float lifeSec) 
         body->setGravityEnable(false);
         body->setRotationEnable(false);
 
-        // Masks theo PhysicsDefs.h (C++14-safe)
+        // Masks: để đạn người chơi có thể "đụng" ENEMY + ENEMY_PROJ (đã có trong MASK_BULLET)
         body->setCategoryBitmask(static_cast<int>(phys::CAT_BULLET));
         body->setCollisionBitmask(static_cast<int>(phys::MASK_BULLET));
         body->setContactTestBitmask(static_cast<int>(phys::MASK_BULLET));

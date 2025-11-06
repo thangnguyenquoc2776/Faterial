@@ -76,7 +76,8 @@ private:
     float _moveSpeed   = 180.f;
     float _accelGround = 1200.f;
     float _accelAir    = 650.f;
-    float _jumpImpulse = 420.f;
+    // float _jumpImpulse = 420.f;
+    float _jumpImpulse = 600.f;
     float _maxFall     = 1200.f;
 
     // HP/invuln

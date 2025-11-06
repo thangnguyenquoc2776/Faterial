@@ -1,4 +1,3 @@
-// Classes/physics/PhysicsDefs.h
 #pragma once
 #include <cstdint>
 #include <initializer_list>
@@ -12,17 +11,21 @@ namespace phys {
 using Mask = std::uint32_t;
 
 enum : Mask {
-    CAT_NONE   = 0u,
-    CAT_WORLD  = 1u << 0,  // ground/map/platform
-    CAT_PLAYER = 1u << 1,
-    CAT_ENEMY  = 1u << 2,
-    CAT_ITEM   = 1u << 3,  // coin/star/upgrade…
-    CAT_BULLET = 1u << 4,  // projectile
-    CAT_SENSOR = 1u << 5,  // generic sensors
-    CAT_CRATE  = 1u << 6,
-    CAT_GATE   = 1u << 7,
-    CAT_SOLID  = 1u << 8,  // tường/vật thể rắn khác
-    CAT_ALL    = 0xFFFFFFFFu
+    CAT_NONE       = 0u,
+    CAT_WORLD      = 1u << 0,  // ground/map/platform
+    CAT_PLAYER     = 1u << 1,
+    CAT_ENEMY      = 1u << 2,
+    CAT_ITEM       = 1u << 3,  // coin/star/upgrade…
+    CAT_BULLET     = 1u << 4,  // projectile của người chơi
+    CAT_SENSOR     = 1u << 5,  // generic sensors
+    CAT_CRATE      = 1u << 6,
+    CAT_GATE       = 1u << 7,
+    CAT_SOLID      = 1u << 8,  // tường/vật thể rắn khác
+
+    // TÁCH BIT RIÊNG cho đạn/aoe của kẻ địch (không đè CRATE)
+    CAT_ENEMY_PROJ = 1u << 9,
+
+    CAT_ALL        = 0xFFFFFFFFu
 };
 
 // ==============================
@@ -51,20 +54,21 @@ enum class ShapeTag : int {
     SLASH = 2   // hitbox chém
 };
 
-// Alias số nguyên để code cũ từng dùng phys::FOOT/SLASH vẫn chạy (C++14-safe).
+// Alias số nguyên để code cũ gọi phys::FOOT/SLASH vẫn chạy
 constexpr int FOOT  = static_cast<int>(ShapeTag::FOOT);
 constexpr int SLASH = static_cast<int>(ShapeTag::SLASH);
 
 // ==============================
 // Masks giữ lại cho back-compat
 // ==============================
-constexpr Mask MASK_BULLET = (CAT_WORLD | CAT_ENEMY | CAT_GATE | CAT_CRATE);
+// CHÚ Ý: Bullet của player sẽ contact với ENEMY_PROJ để bắn nổ đạn quái
+constexpr Mask MASK_BULLET = (CAT_WORLD | CAT_ENEMY | CAT_ENEMY_PROJ | CAT_GATE | CAT_CRATE);
 constexpr Mask MASK_SENSOR = CAT_ALL;
 
 // ==============================
 // Helpers cho mask
 // ==============================
-inline Mask all() { return CAT_ALL; }  // all() = mọi bit
+inline Mask all() { return CAT_ALL; }
 
 // all({ A, B, C }) — C++14, không dùng fold-expression
 inline Mask all(std::initializer_list<Mask> xs) {
@@ -100,7 +104,6 @@ inline void setMasks(cocos2d::Node* node, Mask category, Mask collide, Mask cont
 inline float yOnTop(float topY, float bodyH, float skin = 0.5f) {
     return topY + bodyH * 0.5f + skin;
 }
-
 
 } // namespace phys
 

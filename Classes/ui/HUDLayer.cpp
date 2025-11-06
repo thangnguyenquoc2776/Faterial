@@ -34,8 +34,8 @@ void HUDLayer::onEnter(){
 }
 
 void HUDLayer::_layout(){
-    const auto vs=Director::getInstance()->getVisibleSize();
-    const auto org=Director::getInstance()->getVisibleOrigin();
+    const auto vs  = Director::getInstance()->getVisibleSize();
+    const auto org = Director::getInstance()->getVisibleOrigin();
 
     // text
     _lLives->setAnchorPoint({0,1});  _lLives->setPosition(org + Vec2(16, vs.height-12));
@@ -48,22 +48,20 @@ void HUDLayer::_layout(){
     const float x = org.x + 16;
     const float y = org.y + vs.height - 72;
     const Size  sz(220, 14);
-
     _hpBarBG->clear();
     _hpBarBG->drawSolidRect({x-2,y-2}, {x+sz.width+2, y+sz.height+2}, Color4F(0,0,0,0.6f));
     _hpBarFG->setPosition(Vec2::ZERO);
     _lHPText->setAnchorPoint({0,0.5f});
     _lHPText->setPosition({x, y-18});
-
     _redrawHP();
 
-    // Buff strip dưới HP
+    // Buff strip
     _layoutBuffs();
 }
 
 void HUDLayer::_redrawHP(){
-    const auto vs=Director::getInstance()->getVisibleSize();
-    const auto org=Director::getInstance()->getVisibleOrigin();
+    const auto vs  = Director::getInstance()->getVisibleSize();
+    const auto org = Director::getInstance()->getVisibleOrigin();
     const float x = org.x + 16;
     const float y = org.y + vs.height - 72;
     const Size  sz(220, 14);
@@ -96,7 +94,6 @@ int HUDLayer::addBuff(const std::string& name, float dur){
     ui.name = Label::createWithSystemFont(name, "Arial", 18);
     ui.name->enableShadow();
     ui.bar  = DrawNode::create();
-
     ui.root->addChild(ui.name);
     ui.root->addChild(ui.bar);
     _buffs.push_back(ui);
@@ -114,8 +111,8 @@ void HUDLayer::removeBuff(int id){
     _layoutBuffs();
 }
 void HUDLayer::_layoutBuffs(){
-    const auto vs=Director::getInstance()->getVisibleSize();
-    const auto org=Director::getInstance()->getVisibleOrigin();
+    const auto vs  = Director::getInstance()->getVisibleSize();
+    const auto org = Director::getInstance()->getVisibleOrigin();
     const float startY = org.y + vs.height - 110;
     const float centerX= org.x + vs.width * 0.5f;
 
@@ -128,7 +125,7 @@ void HUDLayer::_layoutBuffs(){
         b.root->setPosition({x0 + i*(itemW+gap), startY});
         b.name->setAnchorPoint({0,0.5f});
         b.name->setPosition({0, itemH+6});
-        // redraw bar
+        // redraw bar: co dần từ trái -> phải (tua "ngược")
         b.bar->clear();
         b.bar->drawSolidRect({0,0}, {itemW, itemH}, Color4F(0,0,0,0.55f));
         float t = (b.dur>0)? (b.remain / b.dur) : 0.f;
@@ -144,7 +141,6 @@ void HUDLayer::tick(float dt){
             if(b.remain < 0) b.remain = 0;
         }
     }
-    // remove hết buff hết giờ
     for(int i=(int)_buffs.size()-1;i>=0;--i){
         if(_buffs[i].dur>0 && _buffs[i].remain<=0.f){
             _buffs[i].root->removeFromParent();
@@ -152,6 +148,6 @@ void HUDLayer::tick(float dt){
             changed=true;
         }
     }
-    if(changed) _layoutBuffs();
-    else _layoutBuffs(); // vẫn redraw chiều dài bar
+    // luôn vẽ lại độ dài bar (mượt theo từng frame)
+    _layoutBuffs();
 }

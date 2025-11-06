@@ -1,6 +1,8 @@
 #pragma once
+
 #include "cocos2d.h"
-#include "game/Enemy.h"
+
+class Enemy;
 
 namespace levels {
 
