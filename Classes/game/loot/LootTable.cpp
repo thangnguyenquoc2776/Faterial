@@ -3,6 +3,8 @@
 #include "game/objects/Star.h"
 #include "game/objects/Upgrade.h"
 #include "physics/CCPhysicsBody.h"
+#include "physics/PhysicsDefs.h"   // <-- thêm dòng này
+
 
 using namespace cocos2d;
 
@@ -50,20 +52,20 @@ static void asSensorItem(Node* n){
     if (!n) return;
     auto* b = n->getPhysicsBody();
     if (!b){
-        // tạo body tròn tĩnh nhỏ nếu item chưa có body
         const float r = std::max(n->getContentSize().width, n->getContentSize().height) * 0.4f;
         b = PhysicsBody::createCircle(r, PhysicsMaterial(0,0,0));
         b->setDynamic(false);
         n->setPhysicsBody(b);
     }
     b->setGravityEnable(false);
-    // mask ITEM sensor
-    const uint32_t CAT_ITEM = 1u<<3, ALL=0xFFFFFFFFu;
-    b->setCategoryBitmask(CAT_ITEM);
-    b->setCollisionBitmask(0);       // không phản lực
-    b->setContactTestBitmask(ALL);   // để GameScene bắt contact
+
+    // mask ITEM sensor chuẩn theo PhysicsDefs
+    b->setCategoryBitmask((int)phys::CAT_ITEM);
+    b->setCollisionBitmask(0);                 // sensor-only
+    b->setContactTestBitmask((int)phys::CAT_ALL);
     for (auto s : b->getShapes()) s->setSensor(true);
 }
+
 
 void LootTable::spawn(Node* root, const Vec2& p, DropKind k, int count){
     if (!root || k==DropKind::NONE || count<=0) return;
@@ -95,4 +97,12 @@ void LootTable::spawn(Node* root, const Vec2& p, DropKind k, int count){
 void LootTable::rollAndSpawn(Node* root, const Vec2& p, const std::vector<DropSpec>& table){
     int cnt=0; DropKind k = rollOne(table, cnt);
     spawn(root, p, k, cnt);
+}
+
+void LootTable::dropAt(Node* root, const Vec2& p, int count) {
+    if (!root) return;
+    count = std::max(1, count);
+    for (int i = 0; i < count; ++i) {
+        rollAndSpawn(root, p, defaultEnemyTable());
+    }
 }

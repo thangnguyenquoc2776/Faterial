@@ -62,4 +62,11 @@ private:
     void _checkWin();
     void _restartLevel();
     void _returnMenu();
+
+    // Sao theo từng mini + barrier + portal cuối
+    std::vector<int> _starsSeg;                 // sao đã nhặt ở mỗi mini (size = _segmentCount)
+    std::vector<cocos2d::Node*> _locks;         // barrier khóa giữa các mini
+    cocos2d::Node* _endPortal = nullptr;        // portal cuối (visual)
+
+
 };

@@ -1,16 +1,15 @@
 #pragma once
 #include "cocos2d.h"
-
-class Enemy; // fwd
+#include "game/Enemy.h"
 
 namespace levels {
 
 struct BuildResult {
     float groundTop = 0.f;
-    int   segments = 0;
+    int   segments  = 5;
     float segmentWidth = 0.f;
-    cocos2d::Vec2 playerSpawn;
-    cocos2d::Vector<Enemy*> enemies;   // <<< TRẢ VỀ Enemy*
+    cocos2d::Vec2 playerSpawn{0,0};
+    cocos2d::Vector<Enemy*> enemies;
 };
 
 BuildResult buildLevel1(cocos2d::Node* root,

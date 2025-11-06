@@ -1,16 +1,14 @@
 #pragma once
-#include "game/Enemy.h"
+#include "game/Entity.h"
 
-class Chest : public Enemy {
+class Chest : public Entity {
 public:
     CREATE_FUNC(Chest);
-
     bool init() override;
-    void enablePhysicsTop(const cocos2d::Vec2& topCenter, const cocos2d::Size& sz);
 
-    void takeHit(int dmg) override;   // bị chém/bắn
-    int  hp = 3;
+    // Mở rương: nhả loot xong tự hủy
+    void open();
 
 private:
-    void spawnLootAndVanish();
+    bool _opened = false;
 };

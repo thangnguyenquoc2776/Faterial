@@ -7,6 +7,9 @@
 #include "game/objects/Coin.h"
 #include "game/objects/Star.h"
 #include "game/objects/Upgrade.h"
+#include "game/objects/Chest.h"
+
+#include "2d/CCDrawNode.h"
 
 #include "physics/PhysicsDefs.h"
 #include <algorithm>
@@ -62,6 +65,35 @@ bool GameScene::init() {
         _hud->setStars(_starsHave, _starsNeed);
         _hud->setHP(_player->hp(), _player->maxHp());   // <---
     }
+
+
+    // --- Sao theo mini + barrier + portal ---
+    _starsNeed = _segmentCount;                  // cần 1 sao/mini => tổng 5
+    _starsSeg.assign(_segmentCount, 0);
+
+    // Tạo barrier khóa giữa mini i và i+1 (i = 0..3)
+    for (int i=0; i<_segmentCount-1; ++i) {
+        float x = _origin.x + (i+1)*_segmentWidth - 3.f; // vách ngăn “mỏng”
+        auto n = Node::create();
+        auto body = PhysicsBody::createBox(Size(6, _vs.height));
+        body->setDynamic(false);
+        body->setCategoryBitmask((int)phys::CAT_GATE);
+        body->setCollisionBitmask((int)phys::CAT_PLAYER);      // chặn Player
+        body->setContactTestBitmask((int)phys::CAT_PLAYER);
+        n->addComponent(body);
+        n->setPosition({x, _groundTop + _vs.height*0.5f});
+        addChild(n, 2);
+        _locks.push_back(n);
+    }
+
+    // Portal cuối (visual thôi, check khoảng cách khi đủ sao)
+    auto dn = DrawNode::create();
+    dn->drawSolidCircle(Vec2::ZERO, 24, 0, 28, Color4F(0.7f,0.9f,1.f,0.85f));
+    _endPortal = dn;
+    // đặt ở mép phải mini 5, hơi nổi lên khỏi ground
+    _endPortal->setPosition(_origin + Vec2(_segmentCount*_segmentWidth - 64.f, _groundTop + 64.f));
+    addChild(_endPortal, 3);
+
 
     _bindInput();
     auto cl = EventListenerPhysicsContact::create();
@@ -147,27 +179,100 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     Node* item = nullptr;
     if (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ITEM)) item=b;
     else if (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ITEM)) item=a;
+
     if (item) {
-        if (dynamic_cast<Star*>(item))      { _setStars(_starsHave+1, _starsNeed); _addScore(50); }
-        else if (dynamic_cast<Coin*>(item)) { _addScore(10); }
-        else if (dynamic_cast<Upgrade*>(item)) { _addScore(25); } // chừa chỗ cắm UpgradeSystem sau
-        item->removeFromParent();
-        _checkWin();
-        return false;
+        // Mini của vật phẩm theo X (0.._segmentCount-1)
+        int segByItem = (int)((item->getPositionX() - _origin.x) / _segmentWidth);
+        if (segByItem < 0) segByItem = 0;
+        if (segByItem >= _segmentCount) segByItem = _segmentCount-1;
+
+        if (auto star = dynamic_cast<Star*>(item)) {
+            // Ghi nhận sao
+            _starsSeg[segByItem] += 1;
+            _setStars(_starsHave+1, _starsNeed);
+            _addScore(50);
+
+            // Mở barrier của mini này (nếu chưa phải mini cuối)
+            if (segByItem < _segmentCount-1 && segByItem >= 0 && segByItem < (int)_locks.size()) {
+                if (_locks[segByItem]) {
+                    _locks[segByItem]->removeFromParent();
+                    _locks[segByItem] = nullptr;
+                    _showOverlay("Gate opened!");
+                }
+            }
+
+            item->removeFromParent();
+            _checkWin();
+            return false;
+        }
+
+        if (auto coin = dynamic_cast<Coin*>(item)) {
+            _addScore(10);
+            item->removeFromParent();
+            return false;
+        }
+
+        if (auto up = dynamic_cast<Upgrade*>(item)) {
+            using T = Upgrade::Type;
+            const auto t = up->type();
+
+            _addScore(25);
+            if (_player) {
+                if (t == T::EXTRA_LIFE) {
+                    _setLives(_lives + 1); // +1 mạng ngay
+                    if (_hud) _hud->addBuff("Extra Life +1", 3.f);
+                } else {
+                    // Giao kèo: Player có applyUpgrade(int type, float duration)
+                    _player->applyUpgrade((int)t, up->duration());
+
+                    if (_hud) {
+                        std::string n;
+                        switch (t) {
+                            case T::SPEED:      n="Speed +25%"; break;
+                            case T::JUMP:       n="Jump +15%"; break;
+                            case T::DAMAGE:     n="Damage +1"; break;
+                            case T::BULLET:     n="Bullet +1"; break;
+                            case T::RANGE:      n="Range +"; break;
+                            case T::DOUBLEJUMP: n="Double Jump"; break;
+                            default:            n="Upgrade"; break;
+                        }
+                        _hud->addBuff(n, std::max(0.1f, up->duration()));
+                    }
+                }
+            }
+            item->removeFromParent();
+            return false;
+        }
+
+        if (auto chest = dynamic_cast<Chest*>(item)) {
+            chest->open();      // để nguyên logic chest
+            return false;
+        }
     }
+
+
 
     // Bullet/Slash ↔ Enemy
     auto isSlash = [&](PhysicsShape* s)->bool { return s && s->getTag()==(int)phys::ShapeTag::SLASH; };
     Node* enemy=nullptr;
     if ( (hasCat(a,phys::CAT_BULLET)||isSlash(A)) && hasCat(b,phys::CAT_ENEMY)) enemy=b;
     else if ( (hasCat(b,phys::CAT_BULLET)||isSlash(B)) && hasCat(a,phys::CAT_ENEMY)) enemy=a;
+
     if (enemy) {
-        if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(isSlash(A)||isSlash(B)?2:1);
+        // ➜ GỘP DAMAGE TỪ BUFF PLAYER: base + atkBonus()
+        int base = (isSlash(A)||isSlash(B)) ? 2 : 1;
+        int dmg  = base + (_player ? _player->atkBonus() : 0);
+
+        if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(dmg);
+
         if (hasCat(a,phys::CAT_BULLET)) a->removeFromParent();
         if (hasCat(b,phys::CAT_BULLET)) b->removeFromParent();
+
         _addScore(20);
         return false;
     }
+
+
 
     // Enemy ↔ Player → TRỪ HP, chỉ trừ mạng khi HP hết
     if ( (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
@@ -204,33 +309,62 @@ void GameScene::_onContactSeparate(PhysicsContact& c) {
     }
 }
 
-void GameScene::update(float) {
+void GameScene::update(float dt) {
     if (_gameOver || _gameWin || !_player) return;
 
-    float x = _player->getPositionX();
-    float target = cocos2d::clampf(x, _camL + _vs.width*0.5f, _camR - _vs.width*0.5f);
-    this->getScene()->getDefaultCamera()->setPositionX(target);
+    // --- NEW: HUD đếm ngược buff mỗi frame ---
+    if (_hud) _hud->tick(dt);
 
-    if (_player->getPositionX() > _camR - 4.0f && _segment < _segmentCount-1) {
+    // --- Camera follow trong biên của đoạn hiện tại ---
+    auto* scene = this->getScene();
+    auto* cam   = scene ? scene->getDefaultCamera() : nullptr;
+    if (cam) {
+        float x      = _player->getPositionX();
+        float halfW  = _vs.width * 0.5f;
+        float target = cocos2d::clampf(x, _camL + halfW, _camR - halfW);
+        cam->setPositionX(target);
+    }
+
+    // --- Sang đoạn kế (nếu đã tới mép phải đoạn) ---
+    if (_player->getPositionX() > _camR - 4.0f && _segment < _segmentCount - 1) {
         _segment++;
         _camL = _origin.x + _segment * _segmentWidth;
         _camR = _camL + _segmentWidth;
-        if (_hud) _hud->setZone(_segment+1, _segmentCount);
+        if (_hud) _hud->setZone(_segment + 1, _segmentCount);
     }
 
-    // Rơi khỏi map → trừ mạng + hồi full HP
+    // --- Rơi khỏi map → trừ mạng + hồi full HP + respawn ---
     if (_player->getPositionY() < _groundTop - 200.f) {
-        _setLives(_lives-1);
-        if (_lives<=0) {
-            _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart");
+        _setLives(_lives - 1);
+        if (_lives <= 0) {
+            _gameOver = true;
+            _showOverlay("YOU DIED\nPress [R] to restart");
         } else {
             _player->restoreFullHP();
             if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
-            _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f,
-                                                _groundTop + 40.f));
+
+            if (auto body = _player->getPhysicsBody())
+                body->setVelocity(Vec2::ZERO);   // NEW: reset vận tốc rơi
+
+            // respawn ở đầu đoạn hiện tại
+            _player->setPosition(_origin + Vec2(
+                _segment * _segmentWidth + _vs.width * 0.15f,
+                _groundTop + 40.f
+            ));
+        }
+    }
+
+    // --- NEW: Đủ số sao → chạm gần portal cuối để Win ---
+    // Yêu cầu: _endPortal đã được tạo trong init() như mình hướng dẫn
+    if (!_gameWin && _starsHave >= _starsNeed && _endPortal && _player) {
+        float dist = _player->getPosition().distance(_endPortal->getPosition());
+        if (dist < 36.f) {
+            _gameWin = true;
+            _showOverlay("YOU WIN!\nPress [Enter] to Menu");
         }
     }
 }
+
 
 // HUD helpers
 void GameScene::_setLives(int v){ _lives = std::max(0, v); if (_hud) _hud->setLives(_lives); }

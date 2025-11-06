@@ -20,6 +20,9 @@ public:
     static void rollAndSpawn(cocos2d::Node* root, const cocos2d::Vec2& p,
                              const std::vector<DropSpec>& table = defaultEnemyTable());
 
+    // Giữ tương thích code cũ: Enemy.cpp có thể gọi dropAt(...)
+    static void dropAt(cocos2d::Node* root, const cocos2d::Vec2& p, int count = 1);
+
 private:
     static DropKind rollOne(const std::vector<DropSpec>& table, int& outCount);
     static void     spawn(cocos2d::Node* root, const cocos2d::Vec2& p,

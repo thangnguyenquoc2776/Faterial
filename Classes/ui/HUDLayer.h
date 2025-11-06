@@ -4,27 +4,46 @@
 class HUDLayer : public cocos2d::Layer {
 public:
     CREATE_FUNC(HUDLayer);
-
     bool init() override;
     void onEnter() override;
 
-    // ===== API GameScene gọi =====
-    void setLives(int v);                    // v trái tim (❤❤❤)
-    void setScore(int v);                    // điểm
-    void setStars(int have, int need);       // sao đã nhặt / cần
-    void setZone(int cur, int total);        // đoạn hiện tại / tổng
-    void setHP(int cur, int max);            // <--- thêm: thanh HP + số
+    // ===== API từ GameScene/Player =====
+    void setLives(int v);
+    void setScore(int v);
+    void setStars(int have, int need);
+    void setZone(int cur, int total);
+    void setHP(int cur, int max);
+
+    // Buff UI: trả về id để cập nhật/xoá; nếu không cần cập nhật thủ công thì cứ để tự đếm
+    int  addBuff(const std::string& name, float durationSec); // tạo buff với đồng hồ
+    void removeBuff(int id);
+    void tick(float dt); // gọi mỗi frame để giảm thời gian hiển thị
 
 private:
-    cocos2d::Label*   _lLives = nullptr;
-    cocos2d::Label*   _lScore = nullptr;
-    cocos2d::Label*   _lStars = nullptr;
-    cocos2d::Label*   _lZone  = nullptr;
+    cocos2d::Label* _lLives = nullptr;
+    cocos2d::Label* _lScore = nullptr;
+    cocos2d::Label* _lStars = nullptr;
+    cocos2d::Label* _lZone  = nullptr;
 
-    // HP bar vẽ bằng DrawNode để sau này dễ thay asset
-    cocos2d::DrawNode* _hpBar   = nullptr;
-    cocos2d::Label*    _lHpText = nullptr;
+    // HP bar
+    cocos2d::DrawNode* _hpBarBG = nullptr;
+    cocos2d::DrawNode* _hpBarFG = nullptr;
+    cocos2d::Label*    _lHPText = nullptr;
+    int _hpCur=100, _hpMax=100;
 
-    void _layout();                          // đặt vị trí label theo màn hình
-    void _drawHpBar(int cur, int max);
+    // Buff strip (trên cùng, giữa)
+    struct BuffUI {
+        int id;
+        cocos2d::Node* root;
+        cocos2d::Label* name;
+        cocos2d::DrawNode* bar;
+        float dur, remain;
+    };
+    std::vector<BuffUI> _buffs;
+    int _nextBuffId = 1;
+
+    int   _lives = 3;
+    void _layout();
+    void _layoutBuffs();
+    void _redrawHP();
 };
