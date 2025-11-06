@@ -1,6 +1,7 @@
 #include "game/bosses/BossGolem.h"
-#include "game/Player.h"
-#include "game/objects/Star.h"          // <-- để spawn Star
+#include "game/Player.h"                  // dùng Player* cho target
+#include "game/objects/Star.h"            // rơi Star khi chết
+
 #include "physics/PhysicsDefs.h"
 #include "2d/CCDrawNode.h"
 #include "physics/CCPhysicsBody.h"
@@ -32,17 +33,21 @@ bool BossGolem::init() {
         _sprite->setScale(1.2f);
     }
 
+    // hitbox thân boss
     enablePhysics(getPosition(), Size(72,72));
+
+    // AI tick
     schedule([this](float dt){ this->_tickBoss(dt); }, "boss.ai");
     return true;
 }
 
 void BossGolem::takeHit(int dmg){
-    // Tính trước để biết có chết không
-    const int finalHp = _hp - std::max(1, dmg);
-    const bool willDie = (finalHp <= 0);
+    if (_dead || _dying) return;
 
-    // Hiệu ứng trúng đòn nhẹ
+    const int hit = std::max(1, dmg);
+    const int finalHp = _hp - hit;
+
+    // hiệu ứng trúng đòn
     if (_sprite) {
         _sprite->runAction(Sequence::create(
             TintTo::create(0.0f, 255,150,150),
@@ -52,32 +57,53 @@ void BossGolem::takeHit(int dmg){
         ));
     }
 
-    // Nếu chết -> rơi Star một lần duy nhất
-    if (willDie && !_starDropped) {
-        _starDropped = true;
-        if (auto parent = getParent()) {
-            auto star = Star::create();
-            if (star) {
-                star->setPosition(getPosition() + Vec2(0, 24.f));
-                parent->addChild(star, 7);
-            }
-        }
+    // chưa chết -> dùng logic Enemy thường (giảm máu + cập nhật thanh HP)
+    if (finalHp > 0) { Enemy::takeHit(dmg); return; }
+
+    // ====== chết: KHÔNG gọi Enemy::takeHit để né LootTable (coin/upgrade) ======
+    _hp = 0;
+    _dead  = true;
+    _dying = true;
+
+    // tắt AI và "đóng băng" body (không tháo shape ngay trong step hiện tại)
+    unschedule("boss.ai");
+    if (_body) {
+        _body->setVelocity(Vec2::ZERO);
+        _body->setContactTestBitmask(0);
+        _body->setCollisionBitmask((int)phys::CAT_WORLD); // vẫn đứng yên nếu còn thấy
+        _body->setEnabled(false);                         // tách khỏi physics world
     }
 
-    // Gọi base để trừ máu, fade-out và remove
-    Enemy::takeHit(dmg);
+    // Hoãn 1 nhịp ngắn để thoát contact, rồi spawn Star + xóa boss
+    this->runAction(Sequence::create(
+        FadeOut::create(0.05f),
+        DelayTime::create(0.02f),                 // QUAN TRỌNG: hoãn 1 frame
+        CallFunc::create([this](){
+            if (auto parent = getParent()) {
+                auto star = Star::create();
+                if (star) {
+                    star->setPosition(getPosition() + Vec2(0, 24.f));
+                    parent->addChild(star, 7);
+                }
+            }
+            removeFromParent();
+        }),
+        nullptr
+    ));
 }
 
 // =====================
 // Helpers nội bộ
 // =====================
 namespace {
+    // projectile mask cho ĐẠN ĐỊCH (đã định nghĩa CAT_ENEMY_PROJ trong PhysicsDefs)
     inline void setEnemyProjMasks(cocos2d::PhysicsBody* b) {
         b->setCategoryBitmask((int)phys::CAT_ENEMY_PROJ);
         b->setCollisionBitmask((int)(phys::CAT_WORLD | phys::CAT_PLAYER));
         b->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_BULLET | phys::CAT_SENSOR));
     }
 
+    // AOE vòng tròn sensor, tự huỷ nhanh
     Node* makeAoeRing(const Vec2& center, float radius, float lifeSec = 0.25f) {
         auto n = Node::create(); n->setPosition(center);
         n->setName("enemy_proj");
@@ -93,11 +119,14 @@ namespace {
         setEnemyProjMasks(body);
         n->addComponent(body);
 
-        n->runAction(Sequence::create(DelayTime::create(std::max(0.05f, lifeSec)),
-                                      CallFunc::create([n]{ n->removeFromParent(); }), nullptr));
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
         return n;
     }
 
+    // Đạn thường: bay thẳng
     Node* makeBullet(const Vec2& origin, const Vec2& velocity, float lifeSec = 1.8f) {
         auto n = Node::create(); n->setPosition(origin);
         n->setName("enemy_proj");
@@ -115,11 +144,14 @@ namespace {
         body->setVelocity(velocity);
         body->setLinearDamping(0.02f);
 
-        n->runAction(Sequence::create(DelayTime::create(std::max(0.05f, lifeSec)),
-                                      CallFunc::create([n]{ n->removeFromParent(); }), nullptr));
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
         return n;
     }
 
+    // Đạn homing: bẻ lái dần
     Node* makeHoming(const Vec2& origin, Node* target,
                      float speed = 240.f, float turnRate = 6.0f, float lifeSec = 2.2f) {
         auto n = Node::create(); n->setPosition(origin);
@@ -148,11 +180,13 @@ namespace {
             b->setVelocity(v);
         }, "enemy.homing");
 
-        n->runAction(Sequence::create(DelayTime::create(std::max(0.05f, lifeSec)),
-                                      CallFunc::create([n]{ n->removeFromParent(); }), nullptr));
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
         return n;
     }
-} // namespace
+} // namespace (helpers)
 
 // =====================
 // AI patterns
@@ -160,9 +194,11 @@ namespace {
 void BossGolem::_tickBoss(float dt){
     if (_dead || !_body) return;
 
+    // KHÓA HOÀN TOÀN khi chưa aggro (bật ở mini cuối trong GameScene)
     if (!_aggroEnabled) {
-        auto v = _body->getVelocity();
-        v.x = 0.f; v.y = std::max(v.y, -900.f);
+        Vec2 v = _body->getVelocity();
+        v.x = 0.f;
+        v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
         return;
     }
@@ -177,6 +213,7 @@ void BossGolem::_tickBoss(float dt){
 
     const float AGGRO = 520.f;
     if (dist > AGGRO) {
+        // di chuyển nhẹ khi chưa vào tầm
         Vec2 v = _body->getVelocity();
         v.x = (dx > 0 ? +1 : -1) * std::min(_moveSpeed * 0.6f, 80.f);
         v.y = std::max(v.y, -900.f);
@@ -188,11 +225,13 @@ void BossGolem::_tickBoss(float dt){
     _cd -= dt;
     if (_cd > 0.f) {
         Vec2 v = _body->getVelocity();
-        v.x *= 0.9f; v.y = std::max(v.y, -900.f);
+        v.x *= 0.9f;
+        v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
         return;
     }
 
+    // Ưu tiên Radial; máu thấp thì hung hăng hơn
     int r = (_hp <= _maxHp/2) ? RandomHelper::random_int(0, 3)
                               : RandomHelper::random_int(0, 2);
     if (r <= 1) _radialBurst(pp);
@@ -208,7 +247,7 @@ void BossGolem::_blinkStrike(const Vec2& playerPos){
 
     if (_sprite) _sprite->runAction(TintTo::create(0.0f, 200,240,255));
     runAction(Sequence::create(
-        DelayTime::create(0.12f),
+        DelayTime::create(0.12f), // telegraph ngắn
         CallFunc::create([=](){
             setPosition(bp + Vec2(dir * 180.f, 0));
             auto aoe = makeAoeRing(getPosition(), 90.f, 0.24f);
@@ -219,11 +258,11 @@ void BossGolem::_blinkStrike(const Vec2& playerPos){
     ));
 }
 
-void BossGolem::_radialBurst(const Vec2&){
+void BossGolem::_radialBurst(const Vec2& /*playerPos*/){
     auto parent = getParent(); if (!parent) return;
 
     const int N = RandomHelper::random_int(12, 16);
-    const int K = RandomHelper::random_int(2, 4);
+    const int K = RandomHelper::random_int(2, 4); // số viên homing
     const float S = 260.f;
 
     std::vector<int> homingIdx; homingIdx.reserve(K);
