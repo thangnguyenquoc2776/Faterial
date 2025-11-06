@@ -17,7 +17,7 @@ Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, floa
         p->setPosition(origin);
 
         // Vẽ nhát chém đơn giản để debug (dạng tam giác)
-        auto dn = DrawNode::create();
+        // auto dn = DrawNode::create();
         float r  = std::max(8.0f, sizeOrRange);
 
         Vec2 a( std::cos(angleRad), std::sin(angleRad) );
@@ -26,8 +26,8 @@ Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, floa
         Vec2 p2 = a.rotateByAngle(Vec2::ZERO, 0.35f) * (r * 0.75f);
 
         Vec2 tri[3] = { p0, p1, p2 };
-        dn->drawSolidPoly(tri, 3, Color4F(1.f, 1.f, 0.4f, 0.35f));
-        p->addChild(dn);
+        // dn->drawSolidPoly(tri, 3, Color4F(1.f, 1.f, 0.4f, 0.35f));
+        // p->addChild(dn);
 
         // Body sensor hình hộp mỏng, đặt lệch về hướng tấn công
         auto body = PhysicsBody::create();

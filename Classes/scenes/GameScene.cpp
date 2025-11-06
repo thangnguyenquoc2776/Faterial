@@ -114,8 +114,8 @@ void GameScene::_bindInput() {
             case EventKeyboard::KeyCode::KEY_W:
             case EventKeyboard::KeyCode::KEY_UP_ARROW:
             case EventKeyboard::KeyCode::KEY_SPACE: _player->jump(); break;
-            case EventKeyboard::KeyCode::KEY_J: _doShoot(); break;
-            case EventKeyboard::KeyCode::KEY_K: _doSlash(); break;
+            case EventKeyboard::KeyCode::KEY_J: _player->doShoot(); break;
+            case EventKeyboard::KeyCode::KEY_K: _player->doSlash(); break;
             default: break;
         }
     };
@@ -129,22 +129,7 @@ void GameScene::_bindInput() {
     _kb = l;
 }
 
-// Bắn / chém giữ nguyên
-void GameScene::_doShoot(){
-    if(!_player) return;
-    int dir = _player->facing();
-    Vec2 origin = _player->getPosition() + Vec2(dir*18.f, _player->halfH() * 0.25f);
-    auto b = Bullet::create(origin, Vec2(700.f * dir, 0.f), 1.5f);
-    if (b) addChild(b, 6);
-}
-void GameScene::_doSlash(){
-    if(!_player) return;
-    int dir = _player->facing();
-    Vec2 origin = _player->getPosition() + Vec2(dir*28.f, _player->halfH() * 0.1f);
-    float angle = (dir > 0) ? 0.0f : 3.14159265f;
-    auto s = Slash::create(origin, angle, 36.f, 0.12f);
-    if (s) addChild(s, 6);
-}
+
 
 // Contact
 bool GameScene::_onContactBegin(PhysicsContact& c) {

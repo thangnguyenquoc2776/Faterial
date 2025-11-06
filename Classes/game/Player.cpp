@@ -4,6 +4,13 @@
 #include "physics/CCPhysicsShape.h"
 #include <algorithm>
 #include <cmath>
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
+#include "GameScene.h" // nếu bạn cần dùng getParent() hoặc dynamic_cast
+
+#include "game/weapon/Bullet.h"
+#include "game/weapon/Slash.h"
 
 using namespace cocos2d;
 
@@ -15,22 +22,30 @@ static inline float approach(float cur, float target, float delta) {
 
 bool Player::init() {
     if (!Entity::init()) return false;
+    CCLOG("Player::init");
 
-    _gfx = DrawNode::create();
-    addChild(_gfx, 1);
-    refreshVisual();
+    // _gfx = DrawNode::create();
+    // addChild(_gfx, 1);
+    // refreshVisual();
+
+    _sprite = Sprite::create("sprites/player/idle/idle_1.png"); // frame đầu tiên
+    _sprite->setAnchorPoint(Vec2(0.5f, 0.5f)); // chân ở dưới
+    _sprite->setPositionY(_colSize.height * 0.5f); // dời lên nửa collider
+    _sprite->setScale(1.4f); // tùy chỉnh kích cỡ hiển thị
+    addChild(_sprite, 1);
+
 
     scheduleUpdate();
     return true;
 }
 
 void Player::refreshVisual() {
-    if (!_gfx) return;
-    _gfx->clear();
-    const float w = _colSize.width;
-    const float h = _colSize.height;
-    _gfx->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h),
-                        Color4F(0.90f, 0.90f, 0.98f, 1.f));
+    // if (!_gfx) return;
+    // _gfx->clear();
+    // const float w = _colSize.width;
+    // const float h = _colSize.height;
+    // _gfx->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h),
+    //                     Color4F(0.90f, 0.90f, 0.98f, 1.f));
 }
 
 void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
@@ -49,7 +64,8 @@ void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
 PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
     Size sz = bodySize;
     sz.width  = std::max(18.f, sz.width  * 0.90f);
-    sz.height = std::max(30.f, sz.height * 0.98f);
+    //! config lai height 1.5 cho bang sprite
+    sz.height = std::max(30.f, sz.height * 1.5f);
 
     if (!_body) {
         _body = PhysicsBody::create();
@@ -125,15 +141,96 @@ void Player::hurt(int dmg) {
     _body->applyImpulse(Vec2(200.f * dir, 260.f));
 }
 
+// Bắn / chém giữ nguyên
+void Player::doShoot(){
+    if (_shooting) return; // tránh spam
+    _shooting = true;
+
+    int dir = facing();
+
+
+    runAction(Sequence::create(
+        DelayTime::create(0.35f), // delay 0.35 giây
+        CallFunc::create([this, dir]() {
+            Vec2 origin = getPosition() + Vec2(dir * 18.f, halfH() * 0.25f);
+            auto b = Bullet::create(origin, Vec2(700.f * dir, 0.f), 1.5f);
+            if (getParent() && b)
+                getParent()->addChild(b, 6);
+        }),
+        DelayTime::create(0.36f), // cooldown trước khi có thể bắn lại
+        CallFunc::create([this]() { _shooting = false; }),
+        nullptr
+    ));
+
+}
+
+void Player::doSlash(){
+     if (_attacking ) return; // tránh spam
+    _attacking = true;
+
+    int dir = facing();
+    
+    // Delay 0.25s trước khi spawn hitbox (trúng sau khi vung)
+    runAction(Sequence::create(
+        DelayTime::create(0.25f),
+        CallFunc::create([this, dir]() {
+            Vec2 origin = getPosition() + Vec2(dir * 28.f, halfH() * 0.1f);
+            float angle = (dir > 0) ? 0.0f : M_PI;
+            auto s = Slash::create(origin, angle, 60.f, 0.12f);
+            if (getParent()) getParent()->addChild(s, 6);
+        }),
+        // Cho nghỉ 0.36s rồi mới cho phép tấn công tiếp
+        DelayTime::create(0.36f),
+        CallFunc::create([this]() {
+            _attacking = false;
+        }),
+        nullptr
+    ));
+}
+
+
+Vector<SpriteFrame*> Player::buildFrames(const std::string& animName, int frameCount) {
+
+    Vector<SpriteFrame*> frames;
+    for (int i = 1; i < frameCount+1; ++i) {
+        std::string path = StringUtils::format("sprites/player/%s/%s_%d.png", animName.c_str(), animName.c_str(), i);
+        auto tex = Director::getInstance()->getTextureCache()->addImage(path);
+        if (!tex) break; // không tìm thấy file => dừng
+        Rect rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+        frames.pushBack(SpriteFrame::create(path, rect));
+    }
+    return frames;
+
+}
+
+void Player::playAnim(const std::string& animName, float delay, int frameCount) {
+    CCLOG("Play anim: %s", animName.c_str());
+    if (_currentAnim == animName) return;
+
+    auto frames = buildFrames(animName, frameCount);
+    if (frames.empty()) {
+        CCLOG("Không tìm thấy frame cho anim: %s", animName.c_str());
+        return;
+    }
+    _currentAnim = animName;
+    auto animation = Animation::createWithSpriteFrames(frames, delay);
+    auto act = RepeatForever::create(Animate::create(animation));
+
+    if (_sprite) {
+        _sprite->stopAllActions();
+        _sprite->runAction(act);
+    }
+}
+
 void Player::update(float dt) {
     if (!_body) return;
 
     if (_invincibleT > 0.f) {
         _invincibleT -= dt;
         const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
-        if (_gfx) _gfx->setOpacity(blink ? 140 : 255);
-    } else if (_gfx) {
-        _gfx->setOpacity(255);
+        if (_sprite) _sprite->setOpacity(blink ? 140 : 255);
+    } else if (_sprite) {
+        _sprite->setOpacity(255);
     }
 
     const bool grounded = (_footContacts > 0);
@@ -149,4 +246,26 @@ void Player::update(float dt) {
 
     v.y = std::max(v.y, -_maxFall);
     _body->setVelocity(v);
+
+    // !--- animation select ---
+
+    if (isDead()) nextAnim = "die";
+    else if (_attacking) nextAnim = "attack";
+    else if (_shooting) nextAnim = "shoot";
+    else if (!grounded) nextAnim = "jump";
+    else if (std::abs(_moveDir.x) > 1e-3f) nextAnim = "run";
+    
+    else nextAnim = "idle";
+
+    if (_currentAnim != nextAnim)
+    {
+        if (nextAnim == "die") playAnim("die", 0.12f, 6);
+        else if (nextAnim == "jump") playAnim("jump", 0.23f, 4);
+        else if (nextAnim == "run") playAnim("run", 0.06f, 8);
+        else if (nextAnim == "attack") playAnim("attack", 0.06f, 6);
+        else if (nextAnim == "shoot") playAnim("shoot", 0.08f, 6);
+        else playAnim("idle", 0.12f, 8);
+    }
+
+    if (_sprite) _sprite->setScaleX(_facing);
 }

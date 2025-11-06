@@ -2,6 +2,10 @@
 #include "cocos2d.h"
 #include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
+
 
 class Player : public Entity {
 public:
@@ -16,11 +20,17 @@ public:
     // Điều khiển
     void setMoveDir(const cocos2d::Vec2& dir);
     void jump();
+    void doShoot();
+    void doSlash();
 
+    
     // Gameplay state
     void incFoot(int delta);      // tăng/giảm số contact của sensor FOOT
     void hurt(int dmg);
     bool invincible() const { return _invincibleT > 0.f; }
+    bool _attacking = false;
+    bool _shooting  = false;
+
 
     // HP
     int  hp()    const { return _hp; }
@@ -34,6 +44,10 @@ public:
     float halfH()    const { return _colSize.height * 0.5f; }
     cocos2d::Size colliderSize() const { return _colSize; }
 
+    std::string nextAnim;
+
+
+
 protected:
     void update(float dt) override;
 
@@ -43,7 +57,16 @@ private:
     void refreshVisual();
 
 private:
-    cocos2d::DrawNode*    _gfx   = nullptr;
+    // cocos2d::DrawNode*    _gfx   = nullptr;
+    //!ANIMATION
+    cocos2d::Sprite* _sprite = nullptr;
+    std::string _currentAnim;
+    
+    //!PLAY ANIMATION
+    void playAnim(const std::string& name, float delay, int frames);
+    // !helper to build frames either from SpriteFrameCache (.plist) or from individual png files
+    cocos2d::Vector<cocos2d::SpriteFrame*> buildFrames(const std::string& animName, int frameCount);
+
     cocos2d::PhysicsBody* _body  = nullptr;
 
     cocos2d::Size _colSize{28.f, 44.f};
