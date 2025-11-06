@@ -1,86 +1,84 @@
 #include "game/Player.h"
-
-#include "2d/CCSprite.h"
 #include "2d/CCDrawNode.h"
-#include "2d/CCActionInstant.h"
-#include "2d/CCActionInterval.h"
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
 
 using namespace cocos2d;
 
-Player* Player::create(const std::string& frame) {
-    auto* p = new (std::nothrow) Player();
-    if (p && p->initWithFrame(frame)) { p->autorelease(); return p; }
-    CC_SAFE_DELETE(p);
-    return nullptr;
+static inline float approach(float cur, float target, float delta) {
+    if (cur < target) return std::min(target, cur + delta);
+    if (cur > target) return std::max(target, cur - delta);
+    return cur;
 }
 
-bool Player::initWithFrame(const std::string& frame) {
+bool Player::init() {
     if (!Entity::init()) return false;
 
-    if (!frame.empty()) {
-        _sprite  = Sprite::create(frame);
-        _boxSize = _sprite->getContentSize();
-    } else {
-        _boxSize = Size(32.f, 48.f);
-        _sprite  = Sprite::create();
-        auto dn  = DrawNode::create();
-        // vẽ theo TÂM (CENTER)
-        dn->drawSolidRect(Vec2(-_boxSize.width*0.5f, -_boxSize.height*0.5f),
-                          Vec2( _boxSize.width*0.5f,  _boxSize.height*0.5f),
-                          Color4F(0.90f,0.90f,1.f,1.f));
-        _sprite->addChild(dn);
-        _sprite->setContentSize(_boxSize);
-    }
+    // GFX: hình chữ nhật đơn giản (đặt theo feet = y=0)
+    _gfx = DrawNode::create();
+    addChild(_gfx, 1);
+    refreshVisual();
 
-    // CENTER-anchored sprite để trùng tâm collider
-    _sprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-    _sprite->setPosition(Vec2::ZERO);
-    addChild(_sprite);
-
-    setTagEx(phys::Tag::PLAYER);
-    schedule([this](float dt){ updateMove(dt); }, "player.move.tick");
+    scheduleUpdate();
     return true;
 }
 
-void Player::enablePhysics(const Vec2& spawnCenter, const Size& bodySize) {
-    setPosition(spawnCenter);         // Node = CENTER
-    _body = buildOrUpdateBody(bodySize);
+void Player::refreshVisual() {
+    if (!_gfx) return;
+    _gfx->clear();
+    const float w = _colSize.width;
+    const float h = _colSize.height;
+    // vì feet = y=0 nên thân phải vẽ lệch lên nửa chiều cao
+    _gfx->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h),
+                        Color4F(0.90f, 0.90f, 0.98f, 1.f));
+}
+
+void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
+    if (bodySize.width > 0 && bodySize.height > 0) _colSize = bodySize;
+    setPosition(feetPos);
+
+    _body = buildOrUpdateBody(_colSize);
     applyPlayerMasks();
+
+    _body->setEnabled(true);
+    _body->setGravityEnable(true);
+    _body->setDynamic(true);
+    _body->setVelocity(Vec2::ZERO);
 }
 
 PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
     Size sz = bodySize;
-    if (sz.equals(Size::ZERO)) {
-        sz = _sprite ? _sprite->getContentSize() : Size(32,48);
-        if (sz.width < 1 || sz.height < 1) sz = Size(32,48);
-    }
-    _boxSize = sz;
+    // làm hitbox “dễ chịu” hơn một chút
+    sz.width  = std::max(18.f, sz.width  * 0.90f);
+    sz.height = std::max(30.f, sz.height * 0.98f);
 
     if (!_body) {
         _body = PhysicsBody::create();
         _body->setDynamic(true);
-        _body->setRotationEnable(false);
+        _body->setRotationEnable(false); // không cho lộn đầu
         addComponent(_body);
     } else {
-        for (auto s : _body->getShapes()) _body->removeShape(s);
+        // xoá mọi shape cũ để rebuild
+        auto shapes = _body->getShapes();
+        for (auto s : shapes) _body->removeShape(s);
     }
 
-    // Hộp chính TRÙNG TÂM (CENTER) — KHÔNG offset +h/2
+    // BOX chính: đẩy lên nửa chiều cao để feet = y=0
     auto mainBox = PhysicsShapeBox::create(
         sz, PhysicsMaterial(0.1f, 0.0f, 0.5f),
-        Vec2::ZERO
+        Vec2(0, +sz.height * 0.5f)
     );
+    // Không setTag(HITBOX) để khỏi lệ thuộc enum không tồn tại
     _body->addShape(mainBox);
 
-    // Sensor chân — đặt NGAY DƯỚI đáy hộp
-    const float footH   = std::max(4.0f, sz.height * 0.08f);
-    const Size  footSize(sz.width * 0.55f, footH);
-    const Vec2  footOffset(0, -sz.height * 0.5f - footH * 0.5f);
+    // FOOT sensor: mỏng, đặt ngay dưới đáy feet một chút
+    const float footH = std::max(4.0f, sz.height * 0.08f);
+    const Size  footSize(sz.width * 0.60f, footH);
+    const Vec2  footOffset(0, -footH * 0.5f); // cắt mỏng xuyên qua đường tiếp xúc
+
     auto foot = PhysicsShapeBox::create(footSize, PhysicsMaterial(0,0,0), footOffset);
     foot->setSensor(true);
-    foot->setTag(static_cast<int>(phys::ShapeTag::FOOT));
+    foot->setTag((int)phys::ShapeTag::FOOT);
     _body->addShape(foot);
 
     _body->setMass(1.0f);
@@ -90,39 +88,30 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
 
 void Player::applyPlayerMasks() {
     if (!_body) return;
-    const phys::Mask collide = phys::CAT_WORLD | phys::CAT_ENEMY |
-                               phys::CAT_SOLID | phys::CAT_CRATE | phys::CAT_GATE;
-    const phys::Mask contact = phys::CAT_WORLD | phys::CAT_ENEMY |
-                               phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
+
+    const phys::Mask collide =
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
+        phys::CAT_GATE  | phys::CAT_CRATE;
+
+    const phys::Mask contact =
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ITEM   |
+        phys::CAT_BULLET| phys::CAT_SENSOR;
+
     phys::setMasks(_body, phys::CAT_PLAYER, collide, contact);
 }
 
 void Player::setMoveDir(const Vec2& dir) {
     _moveDir = dir;
-    if (_moveDir.x >  0.05f) _facing = +1;
-    else if (_moveDir.x < -0.05f) _facing = -1;
+    if (_moveDir.x < 0) _facing = -1;
+    else if (_moveDir.x > 0) _facing = +1;
 }
-
-void Player::applyVelocity(float) {
-    if (!_body) return;
-    const float targetVx = _moveDir.x * moveSpeed;
-    const Vec2  v        = _body->getVelocity();
-    const float factor   = (_footContacts > 0) ? 1.0f : airControl;
-    const float blend    = cocos2d::clampf(factor, 0.0f, 1.0f);
-    const float newVx    = v.x + (targetVx - v.x) * blend;
-    const float maxFall  = -900.0f;
-    const float vy       = std::max(v.y, maxFall);
-    _body->setVelocity(Vec2(newVx, vy));
-}
-
-void Player::updateMove(float dt) { applyVelocity(dt); }
 
 void Player::jump() {
-    if (!_body || _footContacts <= 0) return;
-    Vec2 v = _body->getVelocity();
-    if (v.y < 0) v.y = 0;
-    _body->setVelocity(v);
-    _body->applyImpulse(Vec2(0, jumpImpulse));
+    if (!_body) return;
+    if (_footContacts <= 0) return;
+
+    const float m = _body->getMass();
+    _body->applyImpulse(Vec2(0, _jumpImpulse * m));
 }
 
 void Player::incFoot(int delta) {
@@ -130,15 +119,41 @@ void Player::incFoot(int delta) {
     if (_footContacts < 0) _footContacts = 0;
 }
 
-void Player::hurt(int dmg, const Vec2& knock) {
-    if (_invincible) return;
-    hp -= std::max(1, dmg);
-    if (hp < 0) hp = 0;
-    if (_body && (knock.x != 0 || knock.y != 0)) _body->applyImpulse(knock);
-    _invincible = true;
-    runAction(Sequence::create(
-        DelayTime::create(0.6f),
-        CallFunc::create([this]{ _invincible = false; }),
-        nullptr
-    ));
+void Player::hurt(int /*dmg*/) {
+    if (invincible() || !_body) return;
+    _invincibleT = 0.8f;
+
+    // Hất nhẹ về phía ngược lại
+    const float dir = (_facing > 0 ? -1.f : +1.f);
+    _body->applyImpulse(Vec2(200.f * dir, 260.f));
+}
+
+void Player::update(float dt) {
+    if (!_body) return;
+
+    // Bất tử nháy màu
+    if (_invincibleT > 0.f) {
+        _invincibleT -= dt;
+        const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
+        if (_gfx) _gfx->setOpacity(blink ? 140 : 255);
+    } else {
+        if (_gfx) _gfx->setOpacity(255);
+    }
+
+    const bool grounded = (_footContacts > 0);
+    const float targetVx = _moveDir.x * _moveSpeed;
+
+    Vec2 v = _body->getVelocity();
+    const float accel = grounded ? _accelGround : _accelAir;
+
+    // nếu không bấm trái/phải và đang trên đất → phanh về 0
+    if (grounded && std::abs(_moveDir.x) < 1e-3f)
+        v.x = approach(v.x, 0.f, accel * dt);
+    else
+        v.x = approach(v.x, targetVx, accel * dt);
+
+    // hạn chế rơi quá nhanh
+    v.y = std::max(v.y, -_maxFall);
+
+    _body->setVelocity(v);
 }

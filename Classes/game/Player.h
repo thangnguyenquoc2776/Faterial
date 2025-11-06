@@ -1,58 +1,57 @@
 #pragma once
 #include "cocos2d.h"
-#include "physics/PhysicsDefs.h"
 #include "game/Entity.h"
+#include "physics/PhysicsDefs.h"
 
 class Player : public Entity {
 public:
-    static Player* create(const std::string& frame = "");
-    bool initWithFrame(const std::string& frame);
+    CREATE_FUNC(Player);
 
-    // pos = CENTER (tọa độ tâm collider)
-    void enablePhysics(const cocos2d::Vec2& pos,
+    // Khởi tạo visual cơ bản (hình chữ nhật sáng màu) và scheduleUpdate
+    virtual bool init() override;
+
+    // Bật/vẽ vật lý. feetPos = vị trí đặt BÀN CHÂN. Nếu bodySize rỗng -> dùng mặc định.
+    void enablePhysics(const cocos2d::Vec2& feetPos,
                        const cocos2d::Size& bodySize = cocos2d::Size::ZERO);
 
-    // điều khiển
+    // Điều khiển
     void setMoveDir(const cocos2d::Vec2& dir);
     void jump();
-    void incFoot(int delta);
 
-    // combat
-    void hurt(int dmg, const cocos2d::Vec2& knockImpulse = cocos2d::Vec2::ZERO);
+    // Gameplay state
+    void incFoot(int delta);      // tăng/giảm số contact của sensor FOOT
+    void hurt(int dmg);
+    bool invincible() const { return _invincibleT > 0.f; }
 
-    // tick
-    void updateMove(float dt);
-
-    // trạng thái
-    int  facing() const     { return _facing; }        // -1 / +1
-    bool invincible() const { return _invincible; }
-
-    // kích thước collider
-    cocos2d::Size colliderSize() const { return _boxSize; }
-    float halfH() const                { return _boxSize.height * 0.5f; }
-
-    // params
-    int   hp        = 3;
-    int   maxHp     = 3;
-    float moveSpeed = 180.0f;
-    float jumpImpulse = 380.0f;
-    float airControl  = 0.6f;
+    // Trợ giúp cho GameScene/Weapon
+    int   facing()   const { return _facing; }            // -1 (trái) / +1 (phải)
+    float halfH()    const { return _colSize.height * 0.5f; }
+    cocos2d::Size colliderSize() const { return _colSize; }
 
 protected:
-    bool init() override { return Entity::init(); }
+    void update(float dt) override;
 
 private:
-    cocos2d::Sprite*      _sprite = nullptr;
-    cocos2d::PhysicsBody* _body   = nullptr;
-    cocos2d::Vec2         _moveDir = cocos2d::Vec2::ZERO;
-
-    int   _footContacts = 0;
-    int   _facing       = +1;
-    bool  _invincible   = false;
-
-    cocos2d::Size        _boxSize{32,48};
-
-    cocos2d::PhysicsBody* buildOrUpdateBody(const cocos2d::Size& wantSize);
+    cocos2d::PhysicsBody* buildOrUpdateBody(const cocos2d::Size& bodySize);
     void applyPlayerMasks();
-    void applyVelocity(float dt);
+    void refreshVisual();
+
+private:
+    cocos2d::DrawNode*    _gfx   = nullptr;
+    cocos2d::PhysicsBody* _body  = nullptr;
+
+    cocos2d::Size _colSize{28.f, 44.f}; // hitbox thực tế (rộng, cao)
+    cocos2d::Vec2 _moveDir{0,0};
+    int    _facing        = +1;
+    int    _footContacts  = 0;
+
+    // Tham số chuyển động
+    float _moveSpeed   = 180.f;   // px/s
+    float _accelGround = 1200.f;  // px/s^2
+    float _accelAir    = 650.f;   // px/s^2
+    float _jumpImpulse = 420.f;   // lực nhảy (nhân khối lượng)
+    float _maxFall     = 1200.f;  // clamp vận tốc rơi
+
+    // Bất tử ngắn sau khi bị thương
+    float _invincibleT = 0.f;
 };

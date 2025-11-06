@@ -13,36 +13,17 @@
 
 USING_NS_CC;
 
-// ================== Bitmasks nội bộ (an toàn) ==================
-// Nếu bạn đã có phys::CAT_* trong PhysicsDefs.h thì phần dưới chỉ dùng để "đọc"
-// Còn va chạm chính vẫn dựa trên Tag/loại Node cụ thể (Bullet, Slash, Item...).
-static constexpr uint32_t PHYS_CAT_WORLD  = 1u << 0;
-static constexpr uint32_t PHYS_CAT_PLAYER = 1u << 1;
-static constexpr uint32_t PHYS_CAT_ENEMY  = 1u << 2;
-static constexpr uint32_t PHYS_CAT_ITEM   = 1u << 3;
-static constexpr uint32_t PHYS_CAT_BULLET = 1u << 4;
-
-static bool hasCat(Node* n, uint32_t catMask){
+// ---- helper: check category theo PhysicsDefs.h (KHÔNG tự định nghĩa lại bit) ----
+static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
     return n && n->getPhysicsBody() &&
-           ((uint32_t)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
-}
-static bool isGroundCandidate(Node* n){
-    if (!n || !n->getPhysicsBody()) return false;
-    auto* b = n->getPhysicsBody();
-    // Đất/platform thường là static hoặc có CAT_WORLD
-    if (!b->isDynamic()) return true;
-#ifdef PHYSICS_DEFS_GUARD
-    // Nếu dự án có phys::CAT_WORLD|CAT_SOLID|CAT_GATE thì dùng thêm:
-    if ( (b->getCategoryBitmask() & (phys::CAT_WORLD | phys::CAT_SOLID | phys::CAT_GATE)) != 0u ) return true;
-#endif
-    return (b->getCategoryBitmask() & PHYS_CAT_WORLD) != 0u;
+           ((phys::Mask)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
 }
 
 // -------------------------------------------------------------------------
-// Scene tạo bằng createWithPhysics() — KHÔNG đụng _world trong init()
 Scene* GameScene::createScene() {
     auto scene = Scene::createWithPhysics();
     auto layer = GameScene::create();
+    layer->setPhysicsWorld(scene->getPhysicsWorld()); // inject world
     scene->addChild(layer);
     return scene;
 }
@@ -50,7 +31,6 @@ Scene* GameScene::createScene() {
 bool GameScene::init() {
     if (!Layer::init()) return false;
 
-    // KHÔNG lấy _world ở đây
     _vs     = Director::getInstance()->getVisibleSize();
     _origin = Director::getInstance()->getVisibleOrigin();
 
@@ -68,16 +48,14 @@ bool GameScene::init() {
     _camL = _origin.x + _segment * _segmentWidth;
     _camR = _camL + _segmentWidth;
 
-    // Player CENTER-anchored
+    // Player
     _player = Player::create();
     addChild(_player, 5);
-    const float H  = _player->colliderSize().height;
-    // CENTER.y = groundTop + skin + H/2  (tránh kẹt mép)
-    const float skin = 1.0f;
-    const float cy   = _groundTop + skin + H * 0.5f;
-    _player->enablePhysics({ L.playerSpawn.x, cy });
 
-    // Enemies đã add vào root trong builder; gom tham chiếu (nếu cần)
+    // spawn cao hơn → rơi tự nhiên xuống nền
+    _player->enablePhysics({ L.playerSpawn.x, _groundTop + 220.f });
+
+    // Enemies (đã add vào root trong builder)
     for (auto* e : L.enemies) _enemies.pushBack(e);
 
     // HUD init
@@ -91,7 +69,6 @@ bool GameScene::init() {
 
     // Input & Contact
     _bindInput();
-
     auto cl = EventListenerPhysicsContact::create();
     cl->onContactBegin    = CC_CALLBACK_1(GameScene::_onContactBegin, this);
     cl->onContactSeparate = CC_CALLBACK_1(GameScene::_onContactSeparate, this);
@@ -104,23 +81,15 @@ bool GameScene::init() {
 
 void GameScene::onEnter() {
     Layer::onEnter();
-    // LÚC NÀY layer ĐÃ ở trong Scene → an toàn lấy world
-    _scene = this->getScene();
-    CCASSERT(_scene, "GameScene must be attached to a Scene");
-    _world = _scene->getPhysicsWorld();
-    CCASSERT(_world, "Use Scene::createWithPhysics() for GameScene");
 
-    _world->setGravity(Vec2(0, -980)); // ~ -9.8 m/s^2 với 100px ~ 1m
-    // Bật khi cần soi:
-    // _world->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
+    if (!_world && getScene()) _world = getScene()->getPhysicsWorld();
+    CCASSERT(_world, "GameScene must be under a Scene with physics");
+
+    _world->setGravity(Vec2(0, -980)); // ~ -9.8 m/s^2 (100 px ~ 1 m)
+    // _world->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // bật khi cần soi
 }
 
-void GameScene::onExit() {
-    // Hủy listener nếu cần (engine tự dọn cho child, nhưng rõ ràng hơn)
-    if (_kb)      _eventDispatcher->removeEventListener(_kb), _kb=nullptr;
-    if (_contact) _eventDispatcher->removeEventListener(_contact), _contact=nullptr;
-    Layer::onExit();
-}
+void GameScene::onExit() { Layer::onExit(); }
 
 // ----------------- UI/HUD -----------------
 void GameScene::buildUICamera() {
@@ -139,23 +108,12 @@ void GameScene::buildHUD() {
 void GameScene::_bindInput() {
     auto l = EventListenerKeyboard::create();
     l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*) {
-        // Toggle debug collider
-        if (c == EventKeyboard::KeyCode::KEY_F1) {
-            if (auto* w = getScene()->getPhysicsWorld()) {
-                static bool dbg=false; dbg=!dbg;
-                w->setDebugDrawMask(dbg ? PhysicsWorld::DEBUGDRAW_ALL
-                                        : PhysicsWorld::DEBUGDRAW_NONE);
-            }
-            return;
-        }
-
         if (_gameOver || _gameWin) {
             if (c==EventKeyboard::KeyCode::KEY_R && _gameOver) _restartLevel();
             if ((c==EventKeyboard::KeyCode::KEY_ENTER || c==EventKeyboard::KeyCode::KEY_KP_ENTER) && _gameWin) _returnMenu();
             return;
         }
         if (!_player) return;
-
         switch (c) {
             case EventKeyboard::KeyCode::KEY_A:
             case EventKeyboard::KeyCode::KEY_LEFT_ARROW:  _player->setMoveDir({-1.f,0.f}); break;
@@ -183,16 +141,17 @@ void GameScene::_bindInput() {
 void GameScene::_doShoot(){
     if(!_player) return;
     int dir = _player->facing();
-    // Player CENTER: miệng súng đặt cao hơn feet một chút
     Vec2 origin = _player->getPosition() + Vec2(dir*18.f, _player->halfH() * 0.25f);
-    if (auto b = Bullet::create(origin, Vec2(700.f * dir, 0.f), 1.5f)) addChild(b, 6);
+    auto b = Bullet::create(origin, Vec2(700.f * dir, 0.f), 1.5f);
+    if (b) addChild(b, 6);
 }
 void GameScene::_doSlash(){
     if(!_player) return;
     int dir = _player->facing();
     Vec2 origin = _player->getPosition() + Vec2(dir*28.f, _player->halfH() * 0.1f);
     float angle = (dir > 0) ? 0.0f : 3.14159265f;
-    if (auto s = Slash::create(origin, angle, 36.f, 0.12f)) addChild(s, 6);
+    auto s = Slash::create(origin, angle, 36.f, 0.12f);
+    if (s) addChild(s, 6);
 }
 
 // ----------------- Contact -----------------
@@ -200,58 +159,51 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     auto A = c.getShapeA(); auto B = c.getShapeB();
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
 
-    // FOOT ↔ WORLD (điểm chân chạm nền/platform)
-    if (A->getTag()==(int)phys::ShapeTag::FOOT && isGroundCandidate(b)) { if (_player) _player->incFoot(1); return true; }
-    if (B->getTag()==(int)phys::ShapeTag::FOOT && isGroundCandidate(a)) { if (_player) _player->incFoot(1); return true; }
-
-    // Player ↔ Item (Coin/Star/Upgrade — sensor)
-    Node* item = nullptr;
-    if (hasCat(a,PHYS_CAT_PLAYER) && hasCat(b,PHYS_CAT_ITEM)) item=b;
-    else if (hasCat(b,PHYS_CAT_PLAYER) && hasCat(a,PHYS_CAT_ITEM)) item=a;
-    // fallback bằng RTTI nếu mask item chưa chuẩn
-    if (!item) {
-        if (dynamic_cast<Coin*>(a) || dynamic_cast<Star*>(a) || dynamic_cast<Upgrade*>(a)) item=a;
-        else if (dynamic_cast<Coin*>(b) || dynamic_cast<Star*>(b) || dynamic_cast<Upgrade*>(b)) item=b;
+    // FOOT ↔ WORLD
+    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,phys::CAT_WORLD)) ||
+        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,phys::CAT_WORLD))) {
+        if (_player) _player->incFoot(1);
+        return true;
     }
+
+    // Player ↔ Item
+    Node* item = nullptr;
+    if (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ITEM)) item=b;
+    else if (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ITEM)) item=a;
     if (item) {
         if (dynamic_cast<Star*>(item))        { _setStars(_starsHave+1, _starsNeed); _addScore(50); }
         else if (dynamic_cast<Coin*>(item))   { _addScore(10); }
         else if (dynamic_cast<Upgrade*>(item)){ _addScore(25); }
         item->removeFromParent();
         _checkWin();
-        return false; // không cần xử lý phản lực
+        return false;
     }
 
     // Bullet/Slash ↔ Enemy
     auto isSlash = [&](PhysicsShape* s)->bool { return s && s->getTag()==(int)phys::ShapeTag::SLASH; };
     Node* enemy=nullptr;
-    bool  slashHit = isSlash(A) || isSlash(B);
-    if ( (hasCat(a,PHYS_CAT_BULLET)||isSlash(A)) && hasCat(b,PHYS_CAT_ENEMY)) enemy=b;
-    else if ( (hasCat(b,PHYS_CAT_BULLET)||isSlash(B)) && hasCat(a,PHYS_CAT_ENEMY)) enemy=a;
-    // fallback RTTI nếu mask không đồng bộ
-    if (!enemy) {
-        if (dynamic_cast<Enemy*>(a) && (hasCat(b,PHYS_CAT_BULLET) || isSlash(B))) enemy=a;
-        else if (dynamic_cast<Enemy*>(b) && (hasCat(a,PHYS_CAT_BULLET) || isSlash(A))) enemy=b;
-    }
+    if ( (hasCat(a,phys::CAT_BULLET)||isSlash(A)) && hasCat(b,phys::CAT_ENEMY)) enemy=b;
+    else if ( (hasCat(b,phys::CAT_BULLET)||isSlash(B)) && hasCat(a,phys::CAT_ENEMY)) enemy=a;
     if (enemy) {
-        if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(slashHit ? 2 : 1);
-        if (hasCat(a,PHYS_CAT_BULLET)) a->removeFromParent();
-        if (hasCat(b,PHYS_CAT_BULLET)) b->removeFromParent();
+        if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(isSlash(A)||isSlash(B)?2:1);
+        if (hasCat(a,phys::CAT_BULLET)) a->removeFromParent();
+        if (hasCat(b,phys::CAT_BULLET)) b->removeFromParent();
         _addScore(20);
         return false;
     }
 
     // Enemy ↔ Player
-    if ( (hasCat(a,PHYS_CAT_PLAYER) && hasCat(b,PHYS_CAT_ENEMY)) ||
-         (hasCat(b,PHYS_CAT_PLAYER) && hasCat(a,PHYS_CAT_ENEMY)) ) {
+    if ( (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
+         (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ENEMY)) ) {
         if (_player && !_player->invincible()) {
-            Node* eNode = hasCat(a,PHYS_CAT_ENEMY)? a : b;
+            Node* eNode = hasCat(a,phys::CAT_ENEMY)? a : b;
             float dir = (_player->getPositionX() < eNode->getPositionX()) ? -1.f : 1.f;
 
             _player->hurt(1);
             if (auto body = _player->getPhysicsBody()) {
                 body->applyImpulse(Vec2(-dir*220.f, 260.f));
             }
+
             _setLives(_lives-1);
             if (_lives<=0) { _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart"); }
         }
@@ -264,8 +216,10 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
 void GameScene::_onContactSeparate(PhysicsContact& c) {
     auto A = c.getShapeA(); auto B = c.getShapeB();
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
-    if (A->getTag()==(int)phys::ShapeTag::FOOT && isGroundCandidate(b)) { if (_player) _player->incFoot(-1); }
-    if (B->getTag()==(int)phys::ShapeTag::FOOT && isGroundCandidate(a)) { if (_player) _player->incFoot(-1); }
+    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,phys::CAT_WORLD)) ||
+        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,phys::CAT_WORLD))) {
+        if (_player) _player->incFoot(-1);
+    }
 }
 
 // ----------------- Update -----------------
@@ -291,9 +245,9 @@ void GameScene::update(float) {
         if (_lives<=0) {
             _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart");
         } else {
-            // respawn ở đầu đoạn hiện tại: CENTER.y = groundTop + 40 + H/2
-            float cy = _groundTop + 40.f + _player->halfH();
-            _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f, cy));
+            // respawn ở đầu đoạn hiện tại, FEET = groundTop + 40
+            _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f,
+                                                _groundTop + 40.f));
         }
     }
 }
