@@ -22,10 +22,15 @@
     │   │   ├── Goomba.h
     │   │   ├── Spiker.cpp
     │   │   └── Spiker.h
+    │   ├── loot
+    │   │   ├── LootTable.cpp
+    │   │   └── LootTable.h
     │   ├── map
     │   │   ├── LevelBuilder.cpp
     │   │   └── LevelBuilder.h
     │   ├── objects
+    │   │   ├── Chest.cpp
+    │   │   ├── Chest.h
     │   │   ├── Coin.cpp
     │   │   ├── Coin.h
     │   │   ├── Crate.cpp
@@ -55,7 +60,7 @@
         └── HUDLayer.h
 
 ===== FILE MANIFEST =====
-- CMakeLists.txt — 6428 bytes — ok
+- CMakeLists.txt — 7139 bytes — ok
 - Classes/main.cpp — 178 bytes — ok
 - Classes/core/AppDelegate.cpp — 1209 bytes — ok
 - Classes/core/AppDelegate.h — 362 bytes — ok
@@ -64,16 +69,20 @@
 - Classes/game/Enemy.h — 1273 bytes — ok
 - Classes/game/Entity.cpp — 187 bytes — ok
 - Classes/game/Entity.h — 788 bytes — ok
-- Classes/game/Player.cpp — 5566 bytes — ok
-- Classes/game/Player.h — 2171 bytes — ok
+- Classes/game/Player.cpp — 4881 bytes — ok
+- Classes/game/Player.h — 1946 bytes — ok
 - Classes/game/bosses/BossGolem.cpp — 1187 bytes — ok
 - Classes/game/bosses/BossGolem.h — 363 bytes — ok
 - Classes/game/enemies/Goomba.cpp — 327 bytes — ok
 - Classes/game/enemies/Goomba.h — 153 bytes — ok
 - Classes/game/enemies/Spiker.cpp — 328 bytes — ok
 - Classes/game/enemies/Spiker.h — 153 bytes — ok
-- Classes/game/map/LevelBuilder.cpp — 7431 bytes — ok
-- Classes/game/map/LevelBuilder.h — 757 bytes — ok
+- Classes/game/loot/LootTable.cpp — 3330 bytes — ok
+- Classes/game/loot/LootTable.h — 877 bytes — ok
+- Classes/game/map/LevelBuilder.cpp — 5292 bytes — ok
+- Classes/game/map/LevelBuilder.h — 468 bytes — ok
+- Classes/game/objects/Chest.cpp — 1653 bytes — ok
+- Classes/game/objects/Chest.h — 346 bytes — ok
 - Classes/game/objects/Coin.cpp — 739 bytes — ok
 - Classes/game/objects/Coin.h — 149 bytes — ok
 - Classes/game/objects/Crate.cpp — 792 bytes — ok
@@ -91,8 +100,8 @@
 - Classes/game/weapon/Slash.cpp — 2488 bytes — ok
 - Classes/game/weapon/Slash.h — 381 bytes — ok
 - Classes/physics/PhysicsDefs.h — 3585 bytes — ok
-- Classes/scenes/GameScene.cpp — 11468 bytes — ok
-- Classes/scenes/GameScene.h — 1975 bytes — ok
+- Classes/scenes/GameScene.cpp — 10959 bytes — ok
+- Classes/scenes/GameScene.h — 1671 bytes — ok
 - Classes/scenes/MenuScene.cpp — 1644 bytes — ok
 - Classes/scenes/MenuScene.h — 375 bytes — ok
 - Classes/ui/HUDLayer.cpp — 2049 bytes — ok
@@ -110,10 +119,9 @@ project(${APP_NAME} C CXX)
 
 # ================== MSVC runtime & common defs ==================
 if (MSVC)
-    # /MD (Release) và /MDd (Debug)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
-    add_compile_options(/MP)
+    add_compile_options(/MP /utf-8)
 endif()
 
 # ================== Cocos2d-x engine ==================
@@ -151,22 +159,26 @@ set(GAME_HEADER
     Classes/game/Player.h
     Classes/game/Enemy.h
 
-    # enemies / bosses / objects
+    # enemies / bosses
     Classes/game/enemies/Goomba.h
     Classes/game/enemies/Spiker.h
     Classes/game/bosses/BossGolem.h
+
+    # objects
     Classes/game/objects/Coin.h
     Classes/game/objects/Star.h
     Classes/game/objects/Upgrade.h
     Classes/game/objects/Crate.h
     Classes/game/objects/Gate.h
     Classes/game/objects/PressurePlate.h
+    Classes/game/objects/Chest.h
 
     # weapon
     Classes/game/weapon/Bullet.h
     Classes/game/weapon/Slash.h
 
-    # map (NEW)
+    # loot & map
+    Classes/game/loot/LootTable.h
     Classes/game/map/LevelBuilder.h
 )
 
@@ -186,30 +198,36 @@ set(GAME_SRC
     Classes/game/Player.cpp
     Classes/game/Enemy.cpp
 
-    # enemies / bosses / objects
+    # enemies / bosses
     Classes/game/enemies/Goomba.cpp
     Classes/game/enemies/Spiker.cpp
     Classes/game/bosses/BossGolem.cpp
+
+    # objects
     Classes/game/objects/Coin.cpp
     Classes/game/objects/Star.cpp
     Classes/game/objects/Upgrade.cpp
     Classes/game/objects/Crate.cpp
     Classes/game/objects/Gate.cpp
     Classes/game/objects/PressurePlate.cpp
+    Classes/game/objects/Chest.cpp
 
     # weapon
     Classes/game/weapon/Bullet.cpp
     Classes/game/weapon/Slash.cpp
 
-    # map (NEW)
+    # loot & map
+    Classes/game/loot/LootTable.cpp
     Classes/game/map/LevelBuilder.cpp
 )
 
 # ================== Platform glue ==================
 if(ANDROID)
     list(APPEND GAME_SRC proj.android/app/jni/hellocpp/main.cpp)
+
 elseif(LINUX)
     list(APPEND GAME_SRC proj.linux/main.cpp)
+
 elseif(WINDOWS)
     list(APPEND GAME_HEADER
         proj.win32/main.h
@@ -220,6 +238,7 @@ elseif(WINDOWS)
         proj.win32/game.rc
         ${common_res_files}
     )
+
 elseif(APPLE)
     if(IOS)
         list(APPEND GAME_HEADER
@@ -275,21 +294,45 @@ target_include_directories(${APP_NAME}
     PRIVATE Classes/game/bosses
     PRIVATE Classes/game/objects
     PRIVATE Classes/game/weapon
-    PRIVATE Classes/game/map            # << NEW
+    PRIVATE Classes/game/loot
+    PRIVATE Classes/game/map
     PRIVATE ${COCOS2DX_ROOT_PATH}/cocos/audio/include/  # AudioEngine
 )
 
 # ================== Link engine + system libs ==================
 target_link_libraries(${APP_NAME} PRIVATE cocos2d)
-
 if (MSVC)
     target_link_options(${APP_NAME} PRIVATE /NODEFAULTLIB:LIBCMT /IGNORE:4098)
     target_link_libraries(${APP_NAME} PRIVATE winmm DbgHelp legacy_stdio_definitions)
 endif()
 
-# ================== App config & copy resources ==================
+# ================== App config & copy resources/DLL ==================
 setup_cocos_app_config(${APP_NAME})
 
+# Ép exe & dll vào build/bin (không tạo Debug/Release con)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+foreach(cfg Debug Release RelWithDebInfo MinSizeRel)
+    set_target_properties(${APP_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/bin
+        LIBRARY_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/bin
+        ARCHIVE_OUTPUT_DIRECTORY_${cfg} ${CMAKE_BINARY_DIR}/lib
+    )
+endforeach()
+
+# Windows: copy DLL engine (glew, glfw, openal, …) về cạnh .exe
+if(WINDOWS)
+    cocos_copy_target_dll(${APP_NAME})
+endif()
+
+# Copy Resources vào cạnh .exe (Windows/Linux/macOS)
+if(LINUX OR WINDOWS)
+    cocos_get_resource_path(APP_RES_DIR ${APP_NAME})
+    cocos_copy_target_res(${APP_NAME} LINK_TO ${APP_RES_DIR} FOLDERS ${GAME_RES_FOLDER})
+endif()
+
+# (macOS/iOS) gán tài nguyên UI
 if(APPLE)
     set_target_properties(${APP_NAME} PROPERTIES RESOURCE "${APP_UI_RES}")
     if(MACOSX)
@@ -298,18 +341,7 @@ if(APPLE)
         set_xcode_property(${APP_NAME} INFOPLIST_FILE "${CMAKE_CURRENT_SOURCE_DIR}/proj.ios_mac/ios/Info.plist")
         set_xcode_property(${APP_NAME} ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon")
     endif()
-elseif(WINDOWS)
-    cocos_copy_target_dll(${APP_NAME})
 endif()
-
-if(LINUX OR WINDOWS)
-    cocos_get_resource_path(APP_RES_DIR ${APP_NAME})
-    cocos_copy_target_res(${APP_NAME} LINK_TO ${APP_RES_DIR} FOLDERS ${GAME_RES_FOLDER})
-endif()
-
-# Tuỳ chọn C++ standard (nếu cần)
-# set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD 17)
-# set_property(TARGET ${APP_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 
 Folder Classes
@@ -573,150 +605,119 @@ protected:
 
 File Player.cpp
 #include "game/Player.h"
-
-#include "2d/CCSprite.h"
 #include "2d/CCDrawNode.h"
-#include "2d/CCActionInstant.h"
-#include "2d/CCActionInterval.h"
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
 
 using namespace cocos2d;
 
-// ----------------------------------------------------
-// create/init
-// ----------------------------------------------------
-Player* Player::create(const std::string& frame) {
-    auto* p = new (std::nothrow) Player();
-    if (p && p->initWithFrame(frame)) { p->autorelease(); return p; }
-    CC_SAFE_DELETE(p);
-    return nullptr;
+static inline float approach(float cur, float target, float delta) {
+    if (cur < target) return std::min(target, cur + delta);
+    if (cur > target) return std::max(target, cur - delta);
+    return cur;
 }
 
-bool Player::initWithFrame(const std::string& frame) {
+bool Player::init() {
     if (!Entity::init()) return false;
 
-    if (!frame.empty()) {
-        _sprite = Sprite::create(frame);
-        _boxSize = _sprite->getContentSize();
-    } else {
-        _boxSize = Size(32.f, 48.f);
-        _sprite = Sprite::create();
-        auto dn = DrawNode::create();
-        // vẽ lấy TÂM làm gốc (không neo đáy)
-        dn->drawSolidRect(Vec2(-_boxSize.width*0.5f, -_boxSize.height*0.5f),
-                          Vec2( _boxSize.width*0.5f,  _boxSize.height*0.5f),
-                          Color4F(0.90f,0.90f,1.f,1.f));
-        _sprite->addChild(dn);
-        _sprite->setContentSize(_boxSize);
-    }
+    // GFX: hình chữ nhật đơn giản (đặt theo feet = y=0)
+    _gfx = DrawNode::create();
+    addChild(_gfx, 1);
+    refreshVisual();
 
-    // Neo/tọa độ sprite ở TÂM node
-    _sprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-    _sprite->setPosition(Vec2::ZERO);
-    addChild(_sprite);
-
-    setTagEx(phys::Tag::PLAYER);
-
-    // Tick áp vận tốc
-    schedule([this](float dt){ updateMove(dt); }, "player.move.tick");
+    scheduleUpdate();
     return true;
 }
 
-// ----------------------------------------------------
-// Physics — CENTER-ANCHORED BODY + sensor chân sát mép dưới
-// ----------------------------------------------------
-void Player::enablePhysics(const Vec2& pos, const Size& bodySize) {
-    setPosition(pos);               // pos là TÂM (GameScene đã tính yOnTop)
-    _body = buildOrUpdateBody(bodySize);
+void Player::refreshVisual() {
+    if (!_gfx) return;
+    _gfx->clear();
+    const float w = _colSize.width;
+    const float h = _colSize.height;
+    // vì feet = y=0 nên thân phải vẽ lệch lên nửa chiều cao
+    _gfx->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h),
+                        Color4F(0.90f, 0.90f, 0.98f, 1.f));
+}
+
+void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
+    if (bodySize.width > 0 && bodySize.height > 0) _colSize = bodySize;
+    setPosition(feetPos);
+
+    _body = buildOrUpdateBody(_colSize);
     applyPlayerMasks();
+
+    _body->setEnabled(true);
+    _body->setGravityEnable(true);
+    _body->setDynamic(true);
+    _body->setVelocity(Vec2::ZERO);
 }
 
 PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
     Size sz = bodySize;
-    if (sz.equals(Size::ZERO)) {
-        sz = _sprite ? _sprite->getContentSize() : Size(32,48);
-        if (sz.width < 1 || sz.height < 1) sz = Size(32,48);
-    }
-    _boxSize = sz;
+    // làm hitbox “dễ chịu” hơn một chút
+    sz.width  = std::max(18.f, sz.width  * 0.90f);
+    sz.height = std::max(30.f, sz.height * 0.98f);
 
-    PhysicsBody* body = _body;
-    if (!body) {
-        body = PhysicsBody::create();
-        body->setDynamic(true);
-        body->setRotationEnable(false);
-        addComponent(body);
+    if (!_body) {
+        _body = PhysicsBody::create();
+        _body->setDynamic(true);
+        _body->setRotationEnable(false); // không cho lộn đầu
+        addComponent(_body);
     } else {
-        for (auto s : body->getShapes()) body->removeShape(s);
+        // xoá mọi shape cũ để rebuild
+        auto shapes = _body->getShapes();
+        for (auto s : shapes) _body->removeShape(s);
     }
 
-    // Hộp chính ở TÂM
-    auto mainShape = PhysicsShapeBox::create(sz, PhysicsMaterial(0.1f, 0.0f, 0.5f));
-    mainShape->setTag(0);
-    body->addShape(mainShape);
+    // BOX chính: đẩy lên nửa chiều cao để feet = y=0
+    auto mainBox = PhysicsShapeBox::create(
+        sz, PhysicsMaterial(0.1f, 0.0f, 0.5f),
+        Vec2(0, +sz.height * 0.5f)
+    );
+    // Không setTag(HITBOX) để khỏi lệ thuộc enum không tồn tại
+    _body->addShape(mainBox);
 
-    // Sensor chân: sát mép dưới (có eps để không lọt)
+    // FOOT sensor: mỏng, đặt ngay dưới đáy feet một chút
     const float footH = std::max(4.0f, sz.height * 0.08f);
-    const float eps   = 1.0f;
-    auto footShape = PhysicsShapeBox::create(Size(sz.width * 0.5f, footH),
-                                             PhysicsMaterial(0,0,0),
-                                             Vec2(0, -sz.height*0.5f + footH*0.5f - eps));
-    footShape->setSensor(true);
-    footShape->setTag(static_cast<int>(phys::ShapeTag::FOOT));
-    body->addShape(footShape);
+    const Size  footSize(sz.width * 0.60f, footH);
+    const Vec2  footOffset(0, -footH * 0.5f); // cắt mỏng xuyên qua đường tiếp xúc
 
-    body->setMass(1.0f);
-    body->setLinearDamping(0.1f);
-    return body;
+    auto foot = PhysicsShapeBox::create(footSize, PhysicsMaterial(0,0,0), footOffset);
+    foot->setSensor(true);
+    foot->setTag((int)phys::ShapeTag::FOOT);
+    _body->addShape(foot);
+
+    _body->setMass(1.0f);
+    _body->setLinearDamping(0.1f);
+    return _body;
 }
 
 void Player::applyPlayerMasks() {
     if (!_body) return;
 
-    const phys::Mask collide = phys::CAT_WORLD | phys::CAT_ENEMY |
-                               phys::CAT_SOLID | phys::CAT_CRATE | phys::CAT_GATE;
+    const phys::Mask collide =
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
+        phys::CAT_GATE  | phys::CAT_CRATE;
 
-    const phys::Mask contact = phys::CAT_WORLD | phys::CAT_ENEMY |
-                               phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
+    const phys::Mask contact =
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ITEM   |
+        phys::CAT_BULLET| phys::CAT_SENSOR;
 
     phys::setMasks(_body, phys::CAT_PLAYER, collide, contact);
 }
 
-// ----------------------------------------------------
-// Control / Move
-// ----------------------------------------------------
 void Player::setMoveDir(const Vec2& dir) {
     _moveDir = dir;
-    if (_moveDir.x >  0.05f) _facing = +1;
-    else if (_moveDir.x < -0.05f) _facing = -1;
+    if (_moveDir.x < 0) _facing = -1;
+    else if (_moveDir.x > 0) _facing = +1;
 }
-
-void Player::applyVelocity(float /*dt*/) {
-    if (!_body) return;
-
-    const float targetVx = _moveDir.x * moveSpeed;
-    const Vec2  v        = _body->getVelocity();
-
-    const float factor = (_footContacts > 0) ? 1.0f : airControl;
-    const float blend  = cocos2d::clampf(factor, 0.0f, 1.0f);
-    const float newVx  = v.x + (targetVx - v.x) * blend;
-
-    const float maxFall = -900.0f;
-    const float vy      = std::max(v.y, maxFall);
-
-    _body->setVelocity(Vec2(newVx, vy));
-}
-
-void Player::updateMove(float dt) { applyVelocity(dt); }
 
 void Player::jump() {
-    if (!_body || _footContacts <= 0) return;
+    if (!_body) return;
+    if (_footContacts <= 0) return;
 
-    Vec2 v = _body->getVelocity();
-    if (v.y < 0) v.y = 0;
-    _body->setVelocity(v);
-
-    _body->applyImpulse(Vec2(0, jumpImpulse));
+    const float m = _body->getMass();
+    _body->applyImpulse(Vec2(0, _jumpImpulse * m));
 }
 
 void Player::incFoot(int delta) {
@@ -724,87 +725,102 @@ void Player::incFoot(int delta) {
     if (_footContacts < 0) _footContacts = 0;
 }
 
-// ----------------------------------------------------
-// Combat / HP
-// ----------------------------------------------------
-void Player::hurt(int dmg, const Vec2& knockback) {
-    if (_invincible) return;
+void Player::hurt(int /*dmg*/) {
+    if (invincible() || !_body) return;
+    _invincibleT = 0.8f;
 
-    hp -= std::max(1, dmg);
-    if (hp < 0) hp = 0;
+    // Hất nhẹ về phía ngược lại
+    const float dir = (_facing > 0 ? -1.f : +1.f);
+    _body->applyImpulse(Vec2(200.f * dir, 260.f));
+}
 
-    if (_body && (knockback.x != 0 || knockback.y != 0)) {
-        _body->applyImpulse(knockback);
+void Player::update(float dt) {
+    if (!_body) return;
+
+    // Bất tử nháy màu
+    if (_invincibleT > 0.f) {
+        _invincibleT -= dt;
+        const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
+        if (_gfx) _gfx->setOpacity(blink ? 140 : 255);
+    } else {
+        if (_gfx) _gfx->setOpacity(255);
     }
 
-    _invincible = true;
-    runAction(Sequence::create(
-        DelayTime::create(0.6f),
-        CallFunc::create([this]{ _invincible = false; }),
-        nullptr
-    ));
+    const bool grounded = (_footContacts > 0);
+    const float targetVx = _moveDir.x * _moveSpeed;
+
+    Vec2 v = _body->getVelocity();
+    const float accel = grounded ? _accelGround : _accelAir;
+
+    // nếu không bấm trái/phải và đang trên đất → phanh về 0
+    if (grounded && std::abs(_moveDir.x) < 1e-3f)
+        v.x = approach(v.x, 0.f, accel * dt);
+    else
+        v.x = approach(v.x, targetVx, accel * dt);
+
+    // hạn chế rơi quá nhanh
+    v.y = std::max(v.y, -_maxFall);
+
+    _body->setVelocity(v);
 }
 
 File Player.h
 #pragma once
 #include "cocos2d.h"
-#include "physics/PhysicsDefs.h"
 #include "game/Entity.h"
+#include "physics/PhysicsDefs.h"
 
 class Player : public Entity {
 public:
-    // Tạo player (frame rỗng => placeholder 32x48)
-    static Player* create(const std::string& frame = "");
-    bool initWithFrame(const std::string& frame);
+    CREATE_FUNC(Player);
 
-    // Bật physics và đặt vị trí ban đầu.
-    // LƯU Ý: pos là TỌA ĐỘ TÂM của player (không phải "feet").
-    void enablePhysics(const cocos2d::Vec2& pos,
+    // Khởi tạo visual cơ bản (hình chữ nhật sáng màu) và scheduleUpdate
+    virtual bool init() override;
+
+    // Bật/vẽ vật lý. feetPos = vị trí đặt BÀN CHÂN. Nếu bodySize rỗng -> dùng mặc định.
+    void enablePhysics(const cocos2d::Vec2& feetPos,
                        const cocos2d::Size& bodySize = cocos2d::Size::ZERO);
 
-    // Input/điều khiển
-    void setMoveDir(const cocos2d::Vec2& dir);  // [-1..1] mỗi trục
-    void jump();                                // chỉ nhảy khi đang đứng đất
-    void incFoot(int delta);                    // +1 chạm đất / -1 rời đất
+    // Điều khiển
+    void setMoveDir(const cocos2d::Vec2& dir);
+    void jump();
 
-    // Combat/HP
-    void hurt(int dmg, const cocos2d::Vec2& knockImpulse = cocos2d::Vec2::ZERO);
+    // Gameplay state
+    void incFoot(int delta);      // tăng/giảm số contact của sensor FOOT
+    void hurt(int dmg);
+    bool invincible() const { return _invincibleT > 0.f; }
 
-    // Tick di chuyển
-    void updateMove(float dt);
-
-    // Trạng thái cho GameScene
-    int  facing() const     { return _facing; }      // -1 trái, +1 phải
-    bool invincible() const { return _invincible; }
-
-    // Tiện ích collider
-    float          halfH() const        { return _boxSize.height * 0.5f; }
-    cocos2d::Size  colliderSize() const { return _boxSize; }
-
-    // Tham số tinh chỉnh
-    int   hp        = 3;
-    int   maxHp     = 3;
-    float moveSpeed = 180.0f;   // px/s
-    float jumpImpulse = 380.0f; // lực nhảy
-    float airControl  = 0.6f;   // 0..1
+    // Trợ giúp cho GameScene/Weapon
+    int   facing()   const { return _facing; }            // -1 (trái) / +1 (phải)
+    float halfH()    const { return _colSize.height * 0.5f; }
+    cocos2d::Size colliderSize() const { return _colSize; }
 
 protected:
-    bool init() override { return Entity::init(); } // không dùng trực tiếp
+    void update(float dt) override;
 
 private:
-    cocos2d::Sprite*      _sprite   = nullptr;
-    cocos2d::PhysicsBody* _body     = nullptr;
-    cocos2d::Vec2         _moveDir  = cocos2d::Vec2::ZERO;
-
-    int   _footContacts = 0;
-    int   _facing       = +1;
-    bool  _invincible   = false;
-
-    cocos2d::Size        _boxSize {32,48};   // kích thước hộp va chạm hiện tại
-
-    cocos2d::PhysicsBody* buildOrUpdateBody(const cocos2d::Size& wantSize);
+    cocos2d::PhysicsBody* buildOrUpdateBody(const cocos2d::Size& bodySize);
     void applyPlayerMasks();
-    void applyVelocity(float dt);
+    void refreshVisual();
+
+private:
+    cocos2d::DrawNode*    _gfx   = nullptr;
+    cocos2d::PhysicsBody* _body  = nullptr;
+
+    cocos2d::Size _colSize{28.f, 44.f}; // hitbox thực tế (rộng, cao)
+    cocos2d::Vec2 _moveDir{0,0};
+    int    _facing        = +1;
+    int    _footContacts  = 0;
+
+    // Tham số chuyển động
+    float _moveSpeed   = 180.f;   // px/s
+    float _accelGround = 1200.f;  // px/s^2
+    float _accelAir    = 650.f;   // px/s^2
+    float _jumpImpulse = 420.f;   // lực nhảy (nhân khối lượng)
+    float _maxFall     = 1200.f;  // clamp vận tốc rơi
+
+    // Bất tử ngắn sau khi bị thương
+    float _invincibleT = 0.f;
 };
 
 
@@ -919,57 +935,176 @@ public:
 };
 
 
+Folder Classes/game/loot
+File LootTable.cpp
+#include "game/loot/LootTable.h"
+#include "game/objects/Coin.h"
+#include "game/objects/Star.h"
+#include "game/objects/Upgrade.h"
+#include "physics/CCPhysicsBody.h"
+
+using namespace cocos2d;
+
+static float frand(float a, float b){
+    return RandomHelper::random_real(std::min(a,b), std::max(a,b));
+}
+static int irand(int a, int b){
+    return RandomHelper::random_int(std::min(a,b), std::max(a,b));
+}
+
+const std::vector<DropSpec>& LootTable::defaultEnemyTable(){
+    static std::vector<DropSpec> T = {
+        { DropKind::COIN,    60.f, 1, 3 },
+        { DropKind::UPGRADE, 25.f, 1, 1 },
+        { DropKind::STAR,     5.f, 1, 1 },
+        { DropKind::NONE,    10.f, 0, 0 }
+    };
+    return T;
+}
+const std::vector<DropSpec>& LootTable::defaultChestTable(){
+    static std::vector<DropSpec> T = {
+        { DropKind::COIN,    40.f, 3, 6 },
+        { DropKind::UPGRADE, 45.f, 1, 2 },
+        { DropKind::STAR,    10.f, 1, 1 },
+        { DropKind::NONE,     5.f, 0, 0 }
+    };
+    return T;
+}
+
+DropKind LootTable::rollOne(const std::vector<DropSpec>& table, int& outCount){
+    float sumW = 0.f;
+    for (auto& e : table) sumW += e.weight;
+    float r = frand(0.f, sumW), acc = 0.f;
+    for (auto& e : table){
+        acc += e.weight;
+        if (r <= acc){
+            outCount = (e.maxCount>=e.minCount)? irand(e.minCount, e.maxCount) : e.minCount;
+            return e.kind;
+        }
+    }
+    outCount = 0; return DropKind::NONE;
+}
+
+static void asSensorItem(Node* n){
+    if (!n) return;
+    auto* b = n->getPhysicsBody();
+    if (!b){
+        // tạo body tròn tĩnh nhỏ nếu item chưa có body
+        const float r = std::max(n->getContentSize().width, n->getContentSize().height) * 0.4f;
+        b = PhysicsBody::createCircle(r, PhysicsMaterial(0,0,0));
+        b->setDynamic(false);
+        n->setPhysicsBody(b);
+    }
+    b->setGravityEnable(false);
+    // mask ITEM sensor
+    const uint32_t CAT_ITEM = 1u<<3, ALL=0xFFFFFFFFu;
+    b->setCategoryBitmask(CAT_ITEM);
+    b->setCollisionBitmask(0);       // không phản lực
+    b->setContactTestBitmask(ALL);   // để GameScene bắt contact
+    for (auto s : b->getShapes()) s->setSensor(true);
+}
+
+void LootTable::spawn(Node* root, const Vec2& p, DropKind k, int count){
+    if (!root || k==DropKind::NONE || count<=0) return;
+    const float spread = 28.f;
+
+    for (int i=0;i<count;++i){
+        Node* item=nullptr;
+        switch (k){
+            case DropKind::COIN:    item = Coin::create();    break;
+            case DropKind::UPGRADE: item = Upgrade::create(); break;
+            case DropKind::STAR:    item = Star::create();    break;
+            default: break;
+        }
+        if (!item) continue;
+        item->setPosition(p);
+        root->addChild(item, 6);
+
+        // sensor & hiệu ứng "bật" nhẹ
+        asSensorItem(item);
+        Vec2 dir = Vec2(frand(-1.f,1.f), 1.f).getNormalized();
+        float dist = frand(spread*0.4f, spread);
+        item->runAction(Sequence::create(
+            MoveBy::create(0.25f, dir * dist),
+            nullptr
+        ));
+    }
+}
+
+void LootTable::rollAndSpawn(Node* root, const Vec2& p, const std::vector<DropSpec>& table){
+    int cnt=0; DropKind k = rollOne(table, cnt);
+    spawn(root, p, k, cnt);
+}
+
+File LootTable.h
+#pragma once
+#include <vector>
+#include "cocos2d.h"
+
+enum class DropKind { NONE, COIN, UPGRADE, STAR };
+
+struct DropSpec {
+    DropKind kind;
+    float    weight;    // trọng số bốc thăm
+    int      minCount;
+    int      maxCount;
+};
+
+class LootTable {
+public:
+    static const std::vector<DropSpec>& defaultEnemyTable();
+    static const std::vector<DropSpec>& defaultChestTable();
+
+    // Roll & spawn tại vị trí p (CENTER của đối tượng chết/vỡ)
+    static void rollAndSpawn(cocos2d::Node* root, const cocos2d::Vec2& p,
+                             const std::vector<DropSpec>& table = defaultEnemyTable());
+
+private:
+    static DropKind rollOne(const std::vector<DropSpec>& table, int& outCount);
+    static void     spawn(cocos2d::Node* root, const cocos2d::Vec2& p,
+                          DropKind k, int count);
+};
+
+
 Folder Classes/game/map
 File LevelBuilder.cpp
-// Classes/game/map/LevelBuilder.cpp
 #include "game/map/LevelBuilder.h"
-
 #include "physics/PhysicsDefs.h"
 
 #include "2d/CCDrawNode.h"
 #include "2d/CCLayer.h"
 
-#include "game/objects/Coin.h"
-#include "game/objects/Star.h"
-
+#include "game/Enemy.h"
 #include "game/enemies/Goomba.h"
 #include "game/enemies/Spiker.h"
 #include "game/bosses/BossGolem.h"
+#include "game/objects/Coin.h"
+#include "game/objects/Star.h"
 
 using namespace cocos2d;
 
 namespace {
 
-// Bitmask cục bộ (khớp với PhysicsDefs.h)
-constexpr uint32_t CAT_WORLD = 1u << 0;
-constexpr uint32_t MASK_ALL  = 0xFFFFFFFFu;
-
-// =====================================================================
-// addPlatformTop — Vẽ & tạo collider theo MẶT TRÊN (top-anchored)
-// - Node đặt tại (cx, topY) đúng mép trên nhìn thấy
-// - Collider (box) offset xuống -h/2
-// - Visual vẽ từ y=0 (mặt trên) đổ xuống dưới
-// =====================================================================
-static Node* addPlatformTop(Node* root, float cx, float topY,
-                            float w, float h, const Color4F& c)
-{
+// NỀN/PLATFORM “top-anchored”: node đặt tại (cx, topY - h/2)
+static Node* addPlatformTop(Node* root, float cx, float topY, float w, float h, const Color4F& c) {
     auto n = Node::create();
-    n->setPosition(Vec2(cx, topY)); // neo đúng mép trên
+    n->setPosition(Vec2(cx, topY - h * 0.5f));
 
-    // Physics: 1 body, 1 shape box offset xuống nửa chiều cao
-    auto body  = PhysicsBody::create();
-    auto shape = PhysicsShapeBox::create(Size(w, h), PhysicsMaterial(0.15f, 0.f, 0.3f),
-                                         Vec2(0.f, -h * 0.5f));
-    body->addShape(shape);
+    auto* body = PhysicsBody::createBox(Size(w, h), PhysicsMaterial(0.15f, 0.0f, 0.3f));
     body->setDynamic(false);
-    body->setCategoryBitmask(CAT_WORLD);
-    body->setCollisionBitmask(MASK_ALL);
-    body->setContactTestBitmask(MASK_ALL);
+
+    // KHÔNG dùng MASK_ALL (vì header của bạn không có) → set qua helper trong PhysicsDefs.h
+    // Cho WORLD va chạm với mọi “thứ rắn” và nhận contact với player/sensor.
+    phys::setMasks(body,
+        phys::CAT_WORLD,
+        (phys::CAT_PLAYER | phys::CAT_ENEMY | phys::CAT_SOLID | phys::CAT_GATE | phys::CAT_CRATE),
+        (phys::CAT_PLAYER | phys::CAT_ENEMY | phys::CAT_SENSOR)
+    );
+
     n->setPhysicsBody(body);
 
-    // Visual: vẽ từ top (y=0) xuống dưới để trùng khít với vật lý
     auto d = DrawNode::create();
-    d->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h), c);
+    d->drawSolidRect(Vec2(-w*0.5f, -h*0.5f), Vec2(w*0.5f, h*0.5f), c);
     n->addChild(d);
 
     root->addChild(n);
@@ -977,137 +1112,92 @@ static Node* addPlatformTop(Node* root, float cx, float topY,
 }
 
 static void addZoneBG(Node* root, const Size& vs, const Vec2& origin, int i) {
-    auto bg = LayerColor::create(Color4B(20 + 12 * i, 20 + 12 * i, 26 + 6 * i, 255));
+    auto bg = LayerColor::create(Color4B(25+10*i, 25+10*i, 30+6*i, 255));
     bg->setContentSize(vs);
     bg->setPosition(origin + Vec2(i * vs.width, 0));
     root->addChild(bg, -90);
 }
 
-} // anonymous namespace
+} // anon
 
 namespace levels {
 
-BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin)
-{
+BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
     BuildResult out{};
 
-    // ===== Thông số map liên tiếp (5 đoạn) =====
     const int   SEGMENTS    = 5;
     const float SEG_W       = vs.width;
-    const float GROUND_H    = 28.f;
-    const float GROUND_TOP  = origin.y + vs.height * 0.12f; // cao độ mặt đất (mép trên)
+    const float GROUND_H    = 36.f;
+    const float GROUND_TOP  = origin.y + vs.height * 0.12f;
 
     out.segments     = SEGMENTS;
     out.segmentWidth = SEG_W;
     out.groundTop    = GROUND_TOP;
 
-    // ===== NỀN XANH kéo dài cả 5 đoạn — neo theo mặt trên =====
+    // Ground chạy suốt map (top-anchored)
     const float worldW = SEG_W * SEGMENTS;
-    addPlatformTop(root,
-                   origin.x + worldW * 0.5f,
-                   GROUND_TOP, worldW, GROUND_H,
-                   Color4F(0.10f, 0.82f, 0.22f, 1.f));
+    addPlatformTop(root, origin.x + worldW*0.5f, GROUND_TOP,
+                   worldW, GROUND_H, Color4F(0.10f,0.82f,0.22f,1.f));
 
-    // ===== Mỗi đoạn một layout khác nhau để test leo/nhảy =====
-    for (int i = 0; i < SEGMENTS; ++i) {
+    for (int i=0; i<SEGMENTS; ++i) {
         const float x0 = origin.x + i * SEG_W;
-
-        // BG nhẹ phân đoạn
         addZoneBG(root, vs, origin, i);
 
         switch (i) {
         case 0: {
-            // 1 bệ giữa vừa tầm nhảy
-            addPlatformTop(root, x0 + SEG_W * 0.42f, GROUND_TOP + 110.f,
-                           220.f, 16.f, Color4F(0.48f, 0.48f, 0.78f, 1));
-            // coin
-            for (int k = 0; k < 3; ++k) {
+            addPlatformTop(root, x0 + SEG_W*0.42f, GROUND_TOP + 110.f, 220.f, 16.f, Color4F(0.48f,0.48f,0.78f,1));
+            for (int k=0;k<3;++k){
                 auto c = Coin::create();
-                c->setPosition({ x0 + SEG_W * 0.42f - 30.f + 30.f * k, GROUND_TOP + 135.f });
+                c->setPosition({x0+SEG_W*0.42f-30.f+30.f*k, GROUND_TOP+135.f});
                 root->addChild(c, 2);
             }
             break;
         }
         case 1: {
-            // 2 bệ cao dần để luyện lấy đà
-            addPlatformTop(root, x0 + SEG_W * 0.30f, GROUND_TOP + 150.f,
-                           180.f, 16.f, Color4F(0.48f, 0.48f, 0.78f, 1));
-            addPlatformTop(root, x0 + SEG_W * 0.60f, GROUND_TOP + 200.f,
-                           160.f, 16.f, Color4F(0.40f, 0.65f, 0.80f, 1));
-
-            // Goomba tuần tra trên mặt đất
-            auto g = Goomba::create(); root->addChild(g, 2);
-            g->enablePhysics({ x0 + SEG_W * 0.50f, GROUND_TOP + 10.f }, { 42, 42 });
-            g->setPatrol({ x0 + SEG_W * 0.45f, GROUND_TOP + 10.f },
-                         { x0 + SEG_W * 0.70f, GROUND_TOP + 10.f });
+            addPlatformTop(root, x0 + SEG_W*0.30f, GROUND_TOP + 150.f, 180.f, 16.f, Color4F(0.48f,0.48f,0.78f,1));
+            addPlatformTop(root, x0 + SEG_W*0.60f, GROUND_TOP + 200.f, 160.f, 16.f, Color4F(0.40f,0.65f,0.80f,1));
+            auto g = Goomba::create(); root->addChild(g,2);
+            g->enablePhysics({x0+SEG_W*0.50f, GROUND_TOP+10.f}, {42,42});
+            g->setPatrol({x0+SEG_W*0.45f, GROUND_TOP+10.f},{x0+SEG_W*0.70f, GROUND_TOP+10.f});
             out.enemies.pushBack(g);
             break;
         }
         case 2: {
-            // 3 bệ bậc thang
-            addPlatformTop(root, x0 + SEG_W * 0.25f, GROUND_TOP + 140.f,
-                           140.f, 16.f, Color4F(0.40f, 0.40f, 0.70f, 1));
-            addPlatformTop(root, x0 + SEG_W * 0.50f, GROUND_TOP + 180.f,
-                           200.f, 16.f, Color4F(0.48f, 0.48f, 0.78f, 1));
-            addPlatformTop(root, x0 + SEG_W * 0.75f, GROUND_TOP + 220.f,
-                           140.f, 16.f, Color4F(0.35f, 0.60f, 0.75f, 1));
-
-            // Spiker tuần tra
-            auto s = Spiker::create(); root->addChild(s, 2);
-            s->enablePhysics({ x0 + SEG_W * 0.58f, GROUND_TOP + 10.f }, { 42, 42 });
-            s->setPatrol({ x0 + SEG_W * 0.52f, GROUND_TOP + 10.f },
-                         { x0 + SEG_W * 0.70f, GROUND_TOP + 10.f });
+            addPlatformTop(root, x0 + SEG_W*0.25f, GROUND_TOP + 140.f, 140.f, 16.f, Color4F(0.40f,0.40f,0.70f,1));
+            addPlatformTop(root, x0 + SEG_W*0.50f, GROUND_TOP + 180.f, 200.f, 16.f, Color4F(0.48f,0.48f,0.78f,1));
+            addPlatformTop(root, x0 + SEG_W*0.75f, GROUND_TOP + 220.f, 140.f, 16.f, Color4F(0.35f,0.60f,0.75f,1));
+            auto s = Spiker::create(); root->addChild(s,2);
+            s->enablePhysics({x0+SEG_W*0.58f, GROUND_TOP+10.f}, {42,42});
+            s->setPatrol({x0+SEG_W*0.52f, GROUND_TOP+10.f},{x0+SEG_W*0.70f, GROUND_TOP+10.f});
             out.enemies.pushBack(s);
-
-            // coin trên bệ giữa
-            for (int k = 0; k < 3; ++k) {
+            for (int k=0;k<3;++k){
                 auto c = Coin::create();
-                c->setPosition({ x0 + SEG_W * 0.50f - 30.f + 30.f * k, GROUND_TOP + 205.f });
+                c->setPosition({x0+SEG_W*0.50f-30.f+30.f*k, GROUND_TOP+205.f});
                 root->addChild(c, 2);
             }
             break;
         }
         case 3: {
-            // 2 bệ chéo nhau
-            addPlatformTop(root, x0 + SEG_W * 0.35f, GROUND_TOP + 160.f,
-                           180.f, 16.f, Color4F(0.48f, 0.48f, 0.78f, 1));
-            addPlatformTop(root, x0 + SEG_W * 0.65f, GROUND_TOP + 120.f,
-                           200.f, 16.f, Color4F(0.40f, 0.65f, 0.80f, 1));
-            for (int k = 0; k < 3; ++k) {
-                auto c = Coin::create();
-                c->setPosition({ x0 + SEG_W * 0.35f - 30.f + 30.f * k, GROUND_TOP + 185.f });
-                root->addChild(c, 2);
-            }
+            addPlatformTop(root, x0 + SEG_W*0.35f, GROUND_TOP + 160.f, 180.f, 16.f, Color4F(0.48f,0.48f,0.78f,1));
+            addPlatformTop(root, x0 + SEG_W*0.65f, GROUND_TOP + 120.f, 200.f, 16.f, Color4F(0.40f,0.65f,0.80f,1));
             break;
         }
         case 4: {
-            // Boss & sao thắng
-            addPlatformTop(root, x0 + SEG_W * 0.50f, GROUND_TOP + 160.f,
-                           220.f, 16.f, Color4F(0.48f, 0.48f, 0.78f, 1));
-
-            auto boss = BossGolem::create(); root->addChild(boss, 2);
-            boss->enablePhysics({ x0 + SEG_W * 0.70f, GROUND_TOP + 10.f }, { 72, 72 });
-            boss->setPatrol({ x0 + SEG_W * 0.62f, GROUND_TOP + 10.f },
-                            { x0 + SEG_W * 0.88f, GROUND_TOP + 10.f });
+            addPlatformTop(root, x0 + SEG_W*0.50f, GROUND_TOP + 160.f, 220.f, 16.f, Color4F(0.48f,0.48f,0.78f,1));
+            auto boss = BossGolem::create(); root->addChild(boss,2);
+            boss->enablePhysics({x0+SEG_W*0.70f, GROUND_TOP+10.f}, {72,72});
+            boss->setPatrol({x0+SEG_W*0.62f, GROUND_TOP+10.f},{x0+SEG_W*0.88f, GROUND_TOP+10.f});
             out.enemies.pushBack(boss);
 
             auto star = Star::create();
-            star->setPosition({ x0 + SEG_W * 0.52f, GROUND_TOP + 190.f });
-            root->addChild(star, 2);
+            star->setPosition({x0+SEG_W*0.52f, GROUND_TOP+190.f});
+            root->addChild(star,2);
             break;
         }
-        default: break;
         }
     }
 
-    // ===== Vị trí spawn của người chơi (cao hơn mặt đất) =====
-    // cũ:
-    // out.playerSpawn = Vec2(origin.x + SEG_W*0.15f, GROUND_TOP + 40.f);
-
-    // mới:
-    out.playerSpawn = Vec2(origin.x + SEG_W*0.15f, GROUND_TOP + 1.f);
-
-
+    out.playerSpawn = Vec2(origin.x + SEG_W*0.15f, GROUND_TOP + 1.f); // feet = top + 1
     return out;
 }
 
@@ -1116,19 +1206,19 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin)
 File LevelBuilder.h
 #pragma once
 #include "cocos2d.h"
-#include "game/Enemy.h" // fwd Vector<Enemy*>
+
+class Enemy; // fwd
 
 namespace levels {
 
 struct BuildResult {
-    float               groundTop = 0.f;      // cao độ mặt đất (mép trên)
-    int                 segments   = 0;       // số đoạn (zone)
-    float               segmentWidth = 0.f;   // bề rộng mỗi đoạn
-    cocos2d::Vec2       playerSpawn;          // toạ độ spawn
-    cocos2d::Vector<Enemy*> enemies;          // kẻ địch đã add vào root
+    float groundTop = 0.f;
+    int   segments = 0;
+    float segmentWidth = 0.f;
+    cocos2d::Vec2 playerSpawn;
+    cocos2d::Vector<Enemy*> enemies;   // <<< TRẢ VỀ Enemy*
 };
 
-// Xây cả level vào 'root' (thường là GameScene layer)
 BuildResult buildLevel1(cocos2d::Node* root,
                         const cocos2d::Size& vs,
                         const cocos2d::Vec2& origin);
@@ -1137,6 +1227,75 @@ BuildResult buildLevel1(cocos2d::Node* root,
 
 
 Folder Classes/game/objects
+File Chest.cpp
+#include "game/objects/Chest.h"
+#include "2d/CCDrawNode.h"
+#include "physics/CCPhysicsBody.h"
+#include "game/loot/LootTable.h"
+
+USING_NS_CC;
+
+bool Chest::init(){
+    if (!Enemy::init()) return false;
+
+    // vẽ placeholder chiếc rương (vẽ như top-anchored)
+    auto d = DrawNode::create();
+    const Size S(36, 28);
+    d->drawSolidRect(Vec2(-S.width*0.5f, -S.height), Vec2(S.width*0.5f, 0),
+                     Color4F(0.65f,0.45f,0.20f,1.f));
+    addChild(d);
+    setContentSize(S);
+    return true;
+}
+
+void Chest::enablePhysicsTop(const Vec2& topCenter, const Size& sz){
+    setPosition(topCenter);  // Node = đường TOP
+
+    auto body = PhysicsBody::createBox(sz, PhysicsMaterial(0.2f, 0.f, 0.6f),
+                                       Vec2(0, -sz.height*0.5f)); // offset xuống dưới
+    body->setDynamic(false);
+    body->setRotationEnable(false);
+
+    // Cho rương vào CAT_ENEMY để tái dùng logic Bullet/Slash ↔ Enemy
+    const uint32_t CAT_ENEMY = 1u<<2, ALL=0xFFFFFFFFu;
+    body->setCategoryBitmask(CAT_ENEMY);
+    body->setCollisionBitmask(ALL);
+    body->setContactTestBitmask(ALL);
+    setPhysicsBody(body);
+}
+
+void Chest::takeHit(int dmg){
+    hp -= std::max(1, dmg);
+    // nháy nhẹ báo trúng
+    runAction(Sequence::create(TintTo::create(0, 255,200,200),
+                               TintTo::create(0.08f, 255,255,255),
+                               nullptr));
+    if (hp <= 0) spawnLootAndVanish();
+}
+
+void Chest::spawnLootAndVanish(){
+    LootTable::rollAndSpawn(getParent(), getPosition(), LootTable::defaultChestTable());
+    removeFromParent();
+}
+
+File Chest.h
+#pragma once
+#include "game/Enemy.h"
+
+class Chest : public Enemy {
+public:
+    CREATE_FUNC(Chest);
+
+    bool init() override;
+    void enablePhysicsTop(const cocos2d::Vec2& topCenter, const cocos2d::Size& sz);
+
+    void takeHit(int dmg) override;   // bị chém/bắn
+    int  hp = 3;
+
+private:
+    void spawnLootAndVanish();
+};
+
 File Coin.cpp
 // Coin.cpp
 #include "game/objects/Coin.h"
@@ -1645,23 +1804,17 @@ File GameScene.cpp
 
 USING_NS_CC;
 
-// --- bitmasks cục bộ khớp với PhysicsDefs.h ---------------------------------
-static constexpr uint32_t PHYS_CAT_WORLD  = 1u << 0;
-static constexpr uint32_t PHYS_CAT_PLAYER = 1u << 1;
-static constexpr uint32_t PHYS_CAT_ENEMY  = 1u << 2;
-static constexpr uint32_t PHYS_CAT_ITEM   = 1u << 3;
-static constexpr uint32_t PHYS_CAT_BULLET = 1u << 4;
-static constexpr uint32_t PHYS_MASK_ALL   = 0xFFFFFFFFu;
-
-static bool hasCat(Node* n, uint32_t catMask){
+// ---- helper: check category theo PhysicsDefs.h (KHÔNG tự định nghĩa lại bit) ----
+static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
     return n && n->getPhysicsBody() &&
-           ((uint32_t)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
+           ((phys::Mask)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
 }
 
 // -------------------------------------------------------------------------
 Scene* GameScene::createScene() {
     auto scene = Scene::createWithPhysics();
     auto layer = GameScene::create();
+    layer->setPhysicsWorld(scene->getPhysicsWorld()); // inject world
     scene->addChild(layer);
     return scene;
 }
@@ -1669,7 +1822,6 @@ Scene* GameScene::createScene() {
 bool GameScene::init() {
     if (!Layer::init()) return false;
 
-    // KHÔNG động vào _world ở đây!
     _vs     = Director::getInstance()->getVisibleSize();
     _origin = Director::getInstance()->getVisibleOrigin();
 
@@ -1687,12 +1839,14 @@ bool GameScene::init() {
     _camL = _origin.x + _segment * _segmentWidth;
     _camR = _camL + _segmentWidth;
 
-    // Player (FEET-anchored): truyền đúng vị trí FEET = mặt trên nền
+    // Player
     _player = Player::create();
     addChild(_player, 5);
-    _player->enablePhysics(L.playerSpawn);
 
-    // Enemies: đã add vào parent trong builder; lưu lại tham chiếu
+    // spawn cao hơn → rơi tự nhiên xuống nền
+    _player->enablePhysics({ L.playerSpawn.x, _groundTop + 220.f });
+
+    // Enemies (đã add vào root trong builder)
     for (auto* e : L.enemies) _enemies.pushBack(e);
 
     // HUD init
@@ -1719,14 +1873,11 @@ bool GameScene::init() {
 void GameScene::onEnter() {
     Layer::onEnter();
 
-    // LÚC NÀY layer ĐÃ ở trong Scene → an toàn để lấy world
-    _scene = this->getScene();
-    CCASSERT(_scene, "GameScene must be attached to a Scene");
-    _world = _scene->getPhysicsWorld();
-    CCASSERT(_world, "Use Scene::createWithPhysics() for GameScene");
+    if (!_world && getScene()) _world = getScene()->getPhysicsWorld();
+    CCASSERT(_world, "GameScene must be under a Scene with physics");
 
-    _world->setGravity(Vec2(0, -980));               // ~ -9.8 m/s^2, 100px ≈ 1m
-    //_world->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // bật khi cần soi
+    _world->setGravity(Vec2(0, -980)); // ~ -9.8 m/s^2 (100 px ~ 1 m)
+    // _world->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // bật khi cần soi
 }
 
 void GameScene::onExit() { Layer::onExit(); }
@@ -1781,9 +1932,7 @@ void GameScene::_bindInput() {
 void GameScene::_doShoot(){
     if(!_player) return;
     int dir = _player->facing();
-    // Player FEET-anchored: miệng súng đặt cao hơn feet một chút
     Vec2 origin = _player->getPosition() + Vec2(dir*18.f, _player->halfH() * 0.25f);
-
     auto b = Bullet::create(origin, Vec2(700.f * dir, 0.f), 1.5f);
     if (b) addChild(b, 6);
 }
@@ -1791,7 +1940,6 @@ void GameScene::_doSlash(){
     if(!_player) return;
     int dir = _player->facing();
     Vec2 origin = _player->getPosition() + Vec2(dir*28.f, _player->halfH() * 0.1f);
-
     float angle = (dir > 0) ? 0.0f : 3.14159265f;
     auto s = Slash::create(origin, angle, 36.f, 0.12f);
     if (s) addChild(s, 6);
@@ -1803,16 +1951,16 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
 
     // FOOT ↔ WORLD
-    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,PHYS_CAT_WORLD)) ||
-        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,PHYS_CAT_WORLD))) {
+    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,phys::CAT_WORLD)) ||
+        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,phys::CAT_WORLD))) {
         if (_player) _player->incFoot(1);
         return true;
     }
 
     // Player ↔ Item
     Node* item = nullptr;
-    if (hasCat(a,PHYS_CAT_PLAYER) && hasCat(b,PHYS_CAT_ITEM)) item=b;
-    else if (hasCat(b,PHYS_CAT_PLAYER) && hasCat(a,PHYS_CAT_ITEM)) item=a;
+    if (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ITEM)) item=b;
+    else if (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ITEM)) item=a;
     if (item) {
         if (dynamic_cast<Star*>(item))        { _setStars(_starsHave+1, _starsNeed); _addScore(50); }
         else if (dynamic_cast<Coin*>(item))   { _addScore(10); }
@@ -1825,21 +1973,21 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     // Bullet/Slash ↔ Enemy
     auto isSlash = [&](PhysicsShape* s)->bool { return s && s->getTag()==(int)phys::ShapeTag::SLASH; };
     Node* enemy=nullptr;
-    if ( (hasCat(a,PHYS_CAT_BULLET)||isSlash(A)) && hasCat(b,PHYS_CAT_ENEMY)) enemy=b;
-    else if ( (hasCat(b,PHYS_CAT_BULLET)||isSlash(B)) && hasCat(a,PHYS_CAT_ENEMY)) enemy=a;
+    if ( (hasCat(a,phys::CAT_BULLET)||isSlash(A)) && hasCat(b,phys::CAT_ENEMY)) enemy=b;
+    else if ( (hasCat(b,phys::CAT_BULLET)||isSlash(B)) && hasCat(a,phys::CAT_ENEMY)) enemy=a;
     if (enemy) {
         if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(isSlash(A)||isSlash(B)?2:1);
-        if (hasCat(a,PHYS_CAT_BULLET)) a->removeFromParent();
-        if (hasCat(b,PHYS_CAT_BULLET)) b->removeFromParent();
+        if (hasCat(a,phys::CAT_BULLET)) a->removeFromParent();
+        if (hasCat(b,phys::CAT_BULLET)) b->removeFromParent();
         _addScore(20);
         return false;
     }
 
     // Enemy ↔ Player
-    if ( (hasCat(a,PHYS_CAT_PLAYER) && hasCat(b,PHYS_CAT_ENEMY)) ||
-         (hasCat(b,PHYS_CAT_PLAYER) && hasCat(a,PHYS_CAT_ENEMY)) ) {
+    if ( (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
+         (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ENEMY)) ) {
         if (_player && !_player->invincible()) {
-            Node* eNode = hasCat(a,PHYS_CAT_ENEMY)? a : b;
+            Node* eNode = hasCat(a,phys::CAT_ENEMY)? a : b;
             float dir = (_player->getPositionX() < eNode->getPositionX()) ? -1.f : 1.f;
 
             _player->hurt(1);
@@ -1859,8 +2007,8 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
 void GameScene::_onContactSeparate(PhysicsContact& c) {
     auto A = c.getShapeA(); auto B = c.getShapeB();
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
-    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,PHYS_CAT_WORLD)) ||
-        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,PHYS_CAT_WORLD))) {
+    if ((A->getTag()==(int)phys::ShapeTag::FOOT && hasCat(b,phys::CAT_WORLD)) ||
+        (B->getTag()==(int)phys::ShapeTag::FOOT && hasCat(a,phys::CAT_WORLD))) {
         if (_player) _player->incFoot(-1);
     }
 }
@@ -1939,6 +2087,7 @@ File GameScene.h
 #include "cocos2d.h"
 #include "game/Player.h"
 #include "game/Enemy.h"
+#include "game/map/LevelBuilder.h"
 
 class HUDLayer;
 
@@ -1952,63 +2101,50 @@ public:
     void onExit() override;
     void update(float dt) override;
 
-private:
-    // ---- WORLD/PHYSICS ----
-    cocos2d::Scene*        _scene = nullptr;
-    cocos2d::PhysicsWorld* _world = nullptr;
-    cocos2d::Size _vs;
-    cocos2d::Vec2 _origin;
+    void setPhysicsWorld(cocos2d::PhysicsWorld* w) { _world = w; }
 
-    // ---- PLAYER/ENEMY ----
+private:
+    cocos2d::PhysicsWorld* _world = nullptr;
+    cocos2d::Size _vs{};
+    cocos2d::Vec2 _origin{};
+
+    cocos2d::Camera* _uiCam = nullptr;
+    HUDLayer*        _hud   = nullptr;
+    cocos2d::Label*  _overlay = nullptr;
+
     Player* _player = nullptr;
     cocos2d::Vector<Enemy*> _enemies;
 
-    // ---- CAMERA / SEGMENTS ----
-    float _groundTop     = 0.f;
-    int   _segmentCount  = 1;
-    int   _segment       = 0;
-    float _segmentWidth  = 0.f;
-    float _camL          = 0.f;
-    float _camR          = 0.f;
+    float _groundTop = 0.f;
+    int   _segment = 0, _segmentCount = 1;
+    float _segmentWidth = 0.f;
+    float _camL = 0.f, _camR = 0.f;
 
-    // ---- UI/HUD ----
-    cocos2d::Camera*   _uiCam   = nullptr;
-    HUDLayer*          _hud     = nullptr;
-    cocos2d::Label*    _overlay = nullptr;
+    int  _score=0, _lives=3, _starsHave=0, _starsNeed=5;
+    bool _gameOver=false, _gameWin=false;
 
-    int  _score     = 0;
-    int  _lives     = 3;
-    int  _starsHave = 0;
-    int  _starsNeed = 5;
-    bool _gameOver  = false;
-    bool _gameWin   = false;
-
-    // ---- INPUT/LISTENERS ----
     cocos2d::EventListenerKeyboard*       _kb      = nullptr;
     cocos2d::EventListenerPhysicsContact* _contact = nullptr;
 
-private:
-    // ===== UI =====
+    // UI
     void buildUICamera();
     void buildHUD();
+    void _showOverlay(const std::string& text);
 
-    // ===== INPUT =====
+    // input
     void _bindInput();
     void _doShoot();
     void _doSlash();
 
-    // ===== CONTACT =====
+    // contact
     bool _onContactBegin(cocos2d::PhysicsContact& c);
     void _onContactSeparate(cocos2d::PhysicsContact& c);
 
-    // ===== HUD/STATE =====
+    // HUD/state
     void _setLives(int v);
     void _addScore(int v);
     void _setStars(int have, int need);
     void _checkWin();
-    void _showOverlay(const std::string& text);
-
-    // ===== FLOW =====
     void _restartLevel();
     void _returnMenu();
 };

@@ -13,17 +13,16 @@
 
 USING_NS_CC;
 
-// ---- helper: check category theo PhysicsDefs.h (KHÔNG tự định nghĩa lại bit) ----
+// helper: check category
 static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
     return n && n->getPhysicsBody() &&
            ((phys::Mask)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
 }
 
-// -------------------------------------------------------------------------
 Scene* GameScene::createScene() {
     auto scene = Scene::createWithPhysics();
     auto layer = GameScene::create();
-    layer->setPhysicsWorld(scene->getPhysicsWorld()); // inject world
+    layer->setPhysicsWorld(scene->getPhysicsWorld());
     scene->addChild(layer);
     return scene;
 }
@@ -34,11 +33,10 @@ bool GameScene::init() {
     _vs     = Director::getInstance()->getVisibleSize();
     _origin = Director::getInstance()->getVisibleOrigin();
 
-    // UI
     buildUICamera();
     buildHUD();
 
-    // ===== Build Level 1 (map 5 đoạn liên tiếp) =====
+    // Map 5 đoạn
     auto L = levels::buildLevel1(this, _vs, _origin);
     _groundTop    = L.groundTop;
     _segmentCount = L.segments;
@@ -51,23 +49,20 @@ bool GameScene::init() {
     // Player
     _player = Player::create();
     addChild(_player, 5);
-
-    // spawn cao hơn → rơi tự nhiên xuống nền
     _player->enablePhysics({ L.playerSpawn.x, _groundTop + 220.f });
 
-    // Enemies (đã add vào root trong builder)
     for (auto* e : L.enemies) _enemies.pushBack(e);
 
-    // HUD init
-    _lives = 3; _score = 0; _starsHave = 0; _starsNeed = 5;
+    // HUD
+    _lives = 3; _score = 0; _starsHave = 0; _starsNeed = _segmentCount;
     if (_hud) {
         _hud->setZone(1, _segmentCount);
         _hud->setLives(_lives);
         _hud->setScore(_score);
         _hud->setStars(_starsHave, _starsNeed);
+        _hud->setHP(_player->hp(), _player->maxHp());   // <---
     }
 
-    // Input & Contact
     _bindInput();
     auto cl = EventListenerPhysicsContact::create();
     cl->onContactBegin    = CC_CALLBACK_1(GameScene::_onContactBegin, this);
@@ -81,17 +76,14 @@ bool GameScene::init() {
 
 void GameScene::onEnter() {
     Layer::onEnter();
-
     if (!_world && getScene()) _world = getScene()->getPhysicsWorld();
     CCASSERT(_world, "GameScene must be under a Scene with physics");
-
-    _world->setGravity(Vec2(0, -980)); // ~ -9.8 m/s^2 (100 px ~ 1 m)
-    // _world->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL); // bật khi cần soi
+    _world->setGravity(Vec2(0, -980));
 }
 
 void GameScene::onExit() { Layer::onExit(); }
 
-// ----------------- UI/HUD -----------------
+// UI
 void GameScene::buildUICamera() {
     _uiCam = Camera::createOrthographic(_vs.width, _vs.height, 1.0f, 1024.0f);
     _uiCam->setCameraFlag(CameraFlag::USER1);
@@ -104,7 +96,7 @@ void GameScene::buildHUD() {
     addChild(_hud, 100);
 }
 
-// ----------------- Input -----------------
+// Input
 void GameScene::_bindInput() {
     auto l = EventListenerKeyboard::create();
     l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*) {
@@ -137,7 +129,7 @@ void GameScene::_bindInput() {
     _kb = l;
 }
 
-// ----------------- Combat helpers -----------------
+// Bắn / chém giữ nguyên
 void GameScene::_doShoot(){
     if(!_player) return;
     int dir = _player->facing();
@@ -154,7 +146,7 @@ void GameScene::_doSlash(){
     if (s) addChild(s, 6);
 }
 
-// ----------------- Contact -----------------
+// Contact
 bool GameScene::_onContactBegin(PhysicsContact& c) {
     auto A = c.getShapeA(); auto B = c.getShapeB();
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
@@ -171,9 +163,9 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     if (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ITEM)) item=b;
     else if (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ITEM)) item=a;
     if (item) {
-        if (dynamic_cast<Star*>(item))        { _setStars(_starsHave+1, _starsNeed); _addScore(50); }
-        else if (dynamic_cast<Coin*>(item))   { _addScore(10); }
-        else if (dynamic_cast<Upgrade*>(item)){ _addScore(25); }
+        if (dynamic_cast<Star*>(item))      { _setStars(_starsHave+1, _starsNeed); _addScore(50); }
+        else if (dynamic_cast<Coin*>(item)) { _addScore(10); }
+        else if (dynamic_cast<Upgrade*>(item)) { _addScore(25); } // chừa chỗ cắm UpgradeSystem sau
         item->removeFromParent();
         _checkWin();
         return false;
@@ -192,20 +184,25 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         return false;
     }
 
-    // Enemy ↔ Player
+    // Enemy ↔ Player → TRỪ HP, chỉ trừ mạng khi HP hết
     if ( (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
          (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ENEMY)) ) {
         if (_player && !_player->invincible()) {
-            Node* eNode = hasCat(a,phys::CAT_ENEMY)? a : b;
-            float dir = (_player->getPositionX() < eNode->getPositionX()) ? -1.f : 1.f;
+            _player->hurt(10);                                // trừ HP
+            if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
 
-            _player->hurt(1);
-            if (auto body = _player->getPhysicsBody()) {
-                body->applyImpulse(Vec2(-dir*220.f, 260.f));
+            if (_player->isDead()) {
+                _setLives(_lives-1);
+                if (_lives<=0) {
+                    _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart");
+                } else {
+                    _player->restoreFullHP();
+                    if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
+                    if (auto body = _player->getPhysicsBody()) body->setVelocity(Vec2::ZERO);
+                    _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f,
+                                                        _groundTop + 40.f));
+                }
             }
-
-            _setLives(_lives-1);
-            if (_lives<=0) { _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart"); }
         }
         return true;
     }
@@ -222,16 +219,13 @@ void GameScene::_onContactSeparate(PhysicsContact& c) {
     }
 }
 
-// ----------------- Update -----------------
 void GameScene::update(float) {
     if (_gameOver || _gameWin || !_player) return;
 
-    // Camera follow theo X trong biên đoạn hiện tại
     float x = _player->getPositionX();
     float target = cocos2d::clampf(x, _camL + _vs.width*0.5f, _camR - _vs.width*0.5f);
     this->getScene()->getDefaultCamera()->setPositionX(target);
 
-    // Sang đoạn kế (map liên tiếp)
     if (_player->getPositionX() > _camR - 4.0f && _segment < _segmentCount-1) {
         _segment++;
         _camL = _origin.x + _segment * _segmentWidth;
@@ -239,45 +233,32 @@ void GameScene::update(float) {
         if (_hud) _hud->setZone(_segment+1, _segmentCount);
     }
 
-    // Rơi khỏi map
+    // Rơi khỏi map → trừ mạng + hồi full HP
     if (_player->getPositionY() < _groundTop - 200.f) {
         _setLives(_lives-1);
         if (_lives<=0) {
             _gameOver=true; _showOverlay("YOU DIED\nPress [R] to restart");
         } else {
-            // respawn ở đầu đoạn hiện tại, FEET = groundTop + 40
+            _player->restoreFullHP();
+            if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
             _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f,
                                                 _groundTop + 40.f));
         }
     }
 }
 
-// ----------------- HUD helpers -----------------
-void GameScene::_setLives(int v){
-    _lives = std::max(0, v);
-    if (_hud) _hud->setLives(_lives);
-}
-void GameScene::_addScore(int v){
-    _score += v;
-    if (_hud) _hud->setScore(_score);
-}
-void GameScene::_setStars(int have, int need){
-    _starsHave = have; _starsNeed = need;
-    if (_hud) _hud->setStars(_starsHave, _starsNeed);
-}
+// HUD helpers
+void GameScene::_setLives(int v){ _lives = std::max(0, v); if (_hud) _hud->setLives(_lives); }
+void GameScene::_addScore(int v){ _score += v; if (_hud) _hud->setScore(_score); }
+void GameScene::_setStars(int have, int need){ _starsHave = have; _starsNeed = need; if (_hud) _hud->setStars(_starsHave, _starsNeed); }
 void GameScene::_checkWin(){
     if (_starsHave >= _starsNeed && !_gameWin){
         _gameWin = true;
         _showOverlay("YOU WIN!\nPress [Enter] to Menu");
     }
 }
-
-void GameScene::_restartLevel(){
-    Director::getInstance()->replaceScene(GameScene::createScene());
-}
-void GameScene::_returnMenu(){
-    Director::getInstance()->replaceScene(TransitionFade::create(0.25f, Scene::create()));
-}
+void GameScene::_restartLevel(){ Director::getInstance()->replaceScene(GameScene::createScene()); }
+void GameScene::_returnMenu(){ Director::getInstance()->replaceScene(TransitionFade::create(0.25f, Scene::create())); }
 void GameScene::_showOverlay(const std::string& text){
     if(!_overlay){
         _overlay = Label::createWithSystemFont(text, "Arial", 46);

@@ -2,6 +2,8 @@
 #include "2d/CCDrawNode.h"
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
+#include <algorithm>
+#include <cmath>
 
 using namespace cocos2d;
 
@@ -14,7 +16,6 @@ static inline float approach(float cur, float target, float delta) {
 bool Player::init() {
     if (!Entity::init()) return false;
 
-    // GFX: hình chữ nhật đơn giản (đặt theo feet = y=0)
     _gfx = DrawNode::create();
     addChild(_gfx, 1);
     refreshVisual();
@@ -28,7 +29,6 @@ void Player::refreshVisual() {
     _gfx->clear();
     const float w = _colSize.width;
     const float h = _colSize.height;
-    // vì feet = y=0 nên thân phải vẽ lệch lên nửa chiều cao
     _gfx->drawSolidRect(Vec2(-w*0.5f, 0.f), Vec2(w*0.5f, h),
                         Color4F(0.90f, 0.90f, 0.98f, 1.f));
 }
@@ -48,34 +48,28 @@ void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
 
 PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
     Size sz = bodySize;
-    // làm hitbox “dễ chịu” hơn một chút
     sz.width  = std::max(18.f, sz.width  * 0.90f);
     sz.height = std::max(30.f, sz.height * 0.98f);
 
     if (!_body) {
         _body = PhysicsBody::create();
         _body->setDynamic(true);
-        _body->setRotationEnable(false); // không cho lộn đầu
+        _body->setRotationEnable(false);
         addComponent(_body);
     } else {
-        // xoá mọi shape cũ để rebuild
         auto shapes = _body->getShapes();
         for (auto s : shapes) _body->removeShape(s);
     }
 
-    // BOX chính: đẩy lên nửa chiều cao để feet = y=0
     auto mainBox = PhysicsShapeBox::create(
         sz, PhysicsMaterial(0.1f, 0.0f, 0.5f),
         Vec2(0, +sz.height * 0.5f)
     );
-    // Không setTag(HITBOX) để khỏi lệ thuộc enum không tồn tại
     _body->addShape(mainBox);
 
-    // FOOT sensor: mỏng, đặt ngay dưới đáy feet một chút
     const float footH = std::max(4.0f, sz.height * 0.08f);
     const Size  footSize(sz.width * 0.60f, footH);
-    const Vec2  footOffset(0, -footH * 0.5f); // cắt mỏng xuyên qua đường tiếp xúc
-
+    const Vec2  footOffset(0, -footH * 0.5f);
     auto foot = PhysicsShapeBox::create(footSize, PhysicsMaterial(0,0,0), footOffset);
     foot->setSensor(true);
     foot->setTag((int)phys::ShapeTag::FOOT);
@@ -92,7 +86,6 @@ void Player::applyPlayerMasks() {
     const phys::Mask collide =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
         phys::CAT_GATE  | phys::CAT_CRATE;
-
     const phys::Mask contact =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ITEM   |
         phys::CAT_BULLET| phys::CAT_SENSOR;
@@ -109,7 +102,6 @@ void Player::setMoveDir(const Vec2& dir) {
 void Player::jump() {
     if (!_body) return;
     if (_footContacts <= 0) return;
-
     const float m = _body->getMass();
     _body->applyImpulse(Vec2(0, _jumpImpulse * m));
 }
@@ -119,11 +111,16 @@ void Player::incFoot(int delta) {
     if (_footContacts < 0) _footContacts = 0;
 }
 
-void Player::hurt(int /*dmg*/) {
+void Player::heal(int v) {
+    _hp = std::min(_maxHp, _hp + std::max(0, v));
+}
+void Player::restoreFullHP() { _hp = _maxHp; }
+
+void Player::hurt(int dmg) {
     if (invincible() || !_body) return;
+    _hp = std::max(0, _hp - std::max(1, dmg));
     _invincibleT = 0.8f;
 
-    // Hất nhẹ về phía ngược lại
     const float dir = (_facing > 0 ? -1.f : +1.f);
     _body->applyImpulse(Vec2(200.f * dir, 260.f));
 }
@@ -131,13 +128,12 @@ void Player::hurt(int /*dmg*/) {
 void Player::update(float dt) {
     if (!_body) return;
 
-    // Bất tử nháy màu
     if (_invincibleT > 0.f) {
         _invincibleT -= dt;
         const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
         if (_gfx) _gfx->setOpacity(blink ? 140 : 255);
-    } else {
-        if (_gfx) _gfx->setOpacity(255);
+    } else if (_gfx) {
+        _gfx->setOpacity(255);
     }
 
     const bool grounded = (_footContacts > 0);
@@ -146,14 +142,11 @@ void Player::update(float dt) {
     Vec2 v = _body->getVelocity();
     const float accel = grounded ? _accelGround : _accelAir;
 
-    // nếu không bấm trái/phải và đang trên đất → phanh về 0
     if (grounded && std::abs(_moveDir.x) < 1e-3f)
         v.x = approach(v.x, 0.f, accel * dt);
     else
         v.x = approach(v.x, targetVx, accel * dt);
 
-    // hạn chế rơi quá nhanh
     v.y = std::max(v.y, -_maxFall);
-
     _body->setVelocity(v);
 }
