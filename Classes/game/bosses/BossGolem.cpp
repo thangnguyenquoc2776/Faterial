@@ -5,6 +5,10 @@
 #include "physics/PhysicsDefs.h"
 #include "2d/CCDrawNode.h"
 #include "physics/CCPhysicsBody.h"
+#include "2d/CCActionInstant.h"
+#include "base/CCDirector.h"
+#include "physics/CCPhysicsBody.h"
+#include "game/Player.h"
 #include "physics/CCPhysicsShape.h"
 #include "base/ccRandom.h"
 
@@ -28,18 +32,29 @@ bool BossGolem::init() {
     _cd = 1.0f;
 
     if (_sprite) {
-        _sprite->setTextureRect(Rect(0,0,72,72));
-        _sprite->setColor(Color3B(120,170,255));
-        _sprite->setScale(1.2f);
+        _sprite->removeFromParent();
+        _sprite = nullptr; // Reset con trỏ
     }
 
-    // hitbox thân boss
-    enablePhysics(getPosition(), Size(72,72));
+        _sprite = Sprite::create("sprites/boss/idle/idle_1.png");
+        _sprite->setAnchorPoint(Vec2(0.5f, 0.5f)); // chân ở dưới
+        _sprite->setPosition(Vec2(0.f, 150.f));
+        _sprite->setScale(2.5f);
+        addChild(_sprite, 1);
 
-    // AI tick
+    auto size = _sprite->getContentSize() * _sprite->getScale();
+    _body = PhysicsBody::createBox(size);
+    setPhysicsBody(_body);
+
+    // scheduleUpdate();
+    // schedule([this](float){ updateEnemy(0); }, "enemy.tick");
     schedule([this](float dt){ this->_tickBoss(dt); }, "boss.ai");
+
+
     return true;
 }
+
+
 
 void BossGolem::takeHit(int dmg){
     if (_dead || _dying) return;
@@ -169,7 +184,9 @@ namespace {
         n->addComponent(body);
 
         n->schedule([n, target, speed, turnRate](float dt){
-            auto b = n->getPhysicsBody(); if (!b || !target || !target->getParent()) return;
+            auto b = n->getPhysicsBody(); 
+            if (!b || !target) return;
+            if (!target->getParent()) return;
             Vec2 from = n->getPosition(), to = target->getPosition();
             Vec2 dir  = (to - from).getNormalized();
             Vec2 desired = dir * speed;
@@ -218,6 +235,8 @@ void BossGolem::_tickBoss(float dt){
         v.x = (dx > 0 ? +1 : -1) * std::min(_moveSpeed * 0.6f, 80.f);
         v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
+        playAnim("walk", 0.18f, 12, "boss");
+
         _cd -= dt * 0.5f;
         return;
     }
@@ -228,6 +247,10 @@ void BossGolem::_tickBoss(float dt){
         v.x *= 0.9f;
         v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
+        playAnim("walk", 0.18f, 12, "boss");
+        if (_sprite) _sprite->setFlippedX(_dir > 0);
+
+
         return;
     }
 
@@ -247,12 +270,23 @@ void BossGolem::_blinkStrike(const Vec2& playerPos){
 
     if (_sprite) _sprite->runAction(TintTo::create(0.0f, 200,240,255));
     runAction(Sequence::create(
+        CallFunc::create([=](){ // BẮT ĐẦU hoạt ảnh ATTACK
+            playAnim("attack", 0.18f, 15, "boss");
+            if (_sprite) _sprite->setFlippedX(dir < 0); // Đổi hướng ở đây (hoặc trước đó)
+        }),
         DelayTime::create(0.12f), // telegraph ngắn
         CallFunc::create([=](){
+            // ... (phần code dịch chuyển, AOE) ...
             setPosition(bp + Vec2(dir * 180.f, 0));
             auto aoe = makeAoeRing(getPosition(), 90.f, 0.24f);
             if (aoe) parent->addChild(aoe, 7);
             if (_sprite) _sprite->runAction(TintTo::create(0.0f, 120,170,255));
+            // Không cần setFlippedX ở đây nữa nếu đã set ở trên
+        }),
+        DelayTime::create(0.18f * 15), // Chờ hoạt ảnh Attack kết thúc (ví dụ 15 frame * 0.18s)
+        CallFunc::create([=](){
+            // Chuyển về idle/walk nếu cần
+            // playAnim("walk", 0.18f, 12, "boss");
         }),
         nullptr
     ));

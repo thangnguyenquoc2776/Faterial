@@ -24,9 +24,7 @@ bool Coin::init(){
     auto animate = Animate::create(animation);
     _sprite->runAction(RepeatForever::create(animate));
 
-    // auto dn = DrawNode::create();
-    // dn->drawSolidCircle(Vec2::ZERO, 10, 0, 24, Color4F(1,0.85f,0,1));
-    // addChild(dn);
+   
     auto body = PhysicsBody::createCircle(10);
     body->setDynamic(false);
     body->setCategoryBitmask(phys::CAT_ITEM);

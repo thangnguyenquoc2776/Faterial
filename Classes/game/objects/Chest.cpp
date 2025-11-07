@@ -7,17 +7,17 @@
 
 #include "2d/CCDrawNode.h"
 #include "base/ccRandom.h"
-
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 USING_NS_CC;
 
 bool Chest::init() {
     if (!Entity::init()) return false;
 
-    // Hộp đơn giản (debug visual)
-    auto dn = DrawNode::create();
-    dn->drawSolidRect(Vec2(-14, -10), Vec2(14, 10), Color4F(0.6f, 0.35f, 0.1f, 1));
-    dn->drawRect(Vec2(-14, -10), Vec2(14, 10), Color4F::WHITE);
-    addChild(dn);
+    _sprite = Sprite::create("sprites/objects/chest/chest_1.png");
+    _sprite->setScale(1.3f); // tùy chỉnh kích cỡ hiển thị
+    addChild(_sprite, 1);
 
     // Vật lý: item-sensor, chỉ cần contact với Player
     auto body = PhysicsBody::createBox(Size(28, 20));

@@ -11,9 +11,28 @@
 #include "physics/CCPhysicsShape.h"
 
 #include "2d/CCDrawNode.h"
-#include "base/ccRandom.h"
+#include "2d/CCDrawNode.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
-USING_NS_CC;
+
+
+using namespace cocos2d;
+
+static inline void drawMiniHp(DrawNode* dn, int cur, int max) {
+    if (!dn) return;
+    dn->clear();
+    const float W=30.f, H=4.f, pad=1.f;
+    dn->drawSolidRect(Vec2(-W*0.5f, 10), Vec2(W*0.5f, 10+H), Color4F(0,0,0,0.55f));
+    float ratio = (max>0)? (float)cur/(float)max : 0.f;
+    float ww = (W-2*pad) * ratio;
+    dn->drawSolidRect(Vec2(-W*0.5f+pad, 10+pad), Vec2(-W*0.5f+pad+ww, 10+H-pad),
+                      Color4F(0.25f,0.95f,0.35f,1));
+}
 
 static inline float sgn(float x) { return (x > 0.f) ? 1.f : (x < 0.f ? -1.f : 0.f); }
 
@@ -21,16 +40,50 @@ bool Enemy::init() {
     if (!Entity::init()) return false;
     setTagEx((int)phys::Tag::ENEMY);
 
-    _sprite = Sprite::create();
-    _sprite->setTextureRect(Rect(0, 0, 42, 42));
-    _sprite->setColor(Color3B(200, 70, 70));
-    addChild(_sprite);
+    // _sprite = Sprite::create();
+    // _sprite->setTextureRect(Rect(0,0,42,42));
+    // _sprite->setColor(Color3B(200,70,70));
+    // addChild(_sprite);
 
     _hpbar = DrawNode::create();
     addChild(_hpbar, 2);
 
     schedule([this](float dt) { updateEnemy(dt); }, "enemy.tick");
     return true;
+}
+
+
+Vector<SpriteFrame*> Enemy::buildFrames(const std::string& animName, int frameCount, const std::string& className) {
+
+    Vector<SpriteFrame*> frames;
+    for (int i = 1; i < frameCount+1; ++i) {
+        std::string path = StringUtils::format("sprites/%s/%s/%s_%d.png", className.c_str(), animName.c_str(), animName.c_str(), i);
+        auto tex = Director::getInstance()->getTextureCache()->addImage(path);
+        if (!tex) break; // không tìm thấy file => dừng
+        Rect rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+        frames.pushBack(SpriteFrame::create(path, rect));
+    }
+    return frames;
+
+}
+
+void Enemy::playAnim(const std::string& animName, float delay, int frameCount, const std::string& className) {
+    CCLOG("Play anim: %s", animName.c_str());
+    if (_currentAnim == animName) return;
+
+    auto frames = buildFrames(animName, frameCount, className);
+    if (frames.empty()) {
+        CCLOG("Không tìm thấy frame cho anim: %s", animName.c_str());
+        return;
+    }
+    _currentAnim = animName;
+    auto animation = Animation::createWithSpriteFrames(frames, delay);
+    auto act = RepeatForever::create(Animate::create(animation));
+
+    if (_sprite) {
+        _sprite->stopAllActions();
+        _sprite->runAction(act);
+    }
 }
 
 void Enemy::enablePhysics(const Vec2& pos, const Size& bodySize) {
@@ -74,33 +127,34 @@ void Enemy::setPatrol(const Vec2& a, const Vec2& b) {
         setPosition((_pA + _pB) * 0.5f);
 }
 
+
 void Enemy::updateEnemy(float) {
-    if (!_body) return;
+    // if (!_body) return;
 
-    Vec2 v = _body->getVelocity();
+    // Vec2 v = _body->getVelocity();
 
-    // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
-    bool chasing = false;
-    if (_aggroEnabled && _target) {
-        float dx = _target->getPositionX() - getPositionX();
-        float dy = _target->getPositionY() - getPositionY();
-        if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
-            _dir = (dx >= 0 ? +1 : -1);
-            v.x = _dir * _chaseSpeed;
-            chasing = true;
-        }
-    }
+    // // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
+    // bool chasing = false;
+    // if (_aggroEnabled && _target) {
+    //     float dx = _target->getPositionX() - getPositionX();
+    //     float dy = _target->getPositionY() - getPositionY();
+    //     if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
+    //         _dir = (dx >= 0 ? +1 : -1);
+    //         v.x = _dir * _chaseSpeed;
+    //         chasing = true;
+    //     }
+    // }
 
-    // Không đuổi -> tuần tra giữa 2 mốc
-    if (!chasing && _pA != _pB) {
-        float x = getPositionX();
-        if (_dir > 0 && x >= _pB.x) _dir = -1;
-        else if (_dir < 0 && x <= _pA.x) _dir = +1;
-        v.x = _dir * _moveSpeed;
-    }
+    // // Không đuổi -> tuần tra giữa 2 mốc
+    // if (!chasing && _pA != _pB) {
+    //     float x = getPositionX();
+    //     if (_dir > 0 && x >= _pB.x) _dir = -1;
+    //     else if (_dir < 0 && x <= _pA.x) _dir = +1;
+    //     v.x = _dir * _moveSpeed;
+    // }
 
-    v.y = std::max(v.y, -900.0f);
-    _body->setVelocity(v);
+    // v.y = std::max(v.y, -900.0f);
+    // _body->setVelocity(v);
 }
 
 void Enemy::_updateHpBar() {

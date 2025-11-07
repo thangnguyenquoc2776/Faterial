@@ -65,6 +65,8 @@ static inline float approach(float cur, float target, float delta) {
 bool Player::init() {
     if (!Entity::init()) return false;
     CCLOG("Player::init");
+    this->setName("player");
+
 
     _sprite = Sprite::create("sprites/player/idle/idle_1.png");
     _sprite->setAnchorPoint(Vec2(0.5f, 0.5f));

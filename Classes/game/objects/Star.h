@@ -5,4 +5,5 @@ class Star : public Entity {
 public:
     static Star* create();
     bool init() override;
+    cocos2d::Sprite* _sprite = nullptr;
 };

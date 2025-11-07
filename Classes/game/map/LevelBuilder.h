@@ -3,6 +3,8 @@
 #include "cocos2d.h"
 
 class Enemy;
+#include "2d/CCParallaxNode.h"
+
 
 namespace levels {
 

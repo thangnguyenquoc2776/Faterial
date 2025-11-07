@@ -5,4 +5,5 @@ class Spiker : public Enemy {
 public:
     static Spiker* create();
     bool init() override;
+    void updateEnemy(float dt) override;
 };

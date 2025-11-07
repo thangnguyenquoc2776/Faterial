@@ -58,7 +58,7 @@ bool Upgrade::init(){
 
     _sprite = Sprite::create("sprites/objects/upgrade/upgrade_generic.png");
     if(!_sprite){ _sprite = Sprite::create(); _sprite->setTextureRect(Rect(0,0,20,20)); }
-    _sprite->setScale(1.2f);
+    _sprite->setScale(0.1f);
     addChild(_sprite);
 
     auto body = PhysicsBody::createCircle(12);
@@ -79,13 +79,13 @@ void Upgrade::set(Type t){
 void Upgrade::_refreshVisual(){
     const char* name = "upgrade_generic.png";
     switch(_type){
-        case Type::SPEED:      name="upgrade_speed.png"; break;
-        case Type::JUMP:       name="upgrade_jump.png"; break;
-        case Type::DAMAGE:     name="upgrade_damage.png"; break;
-        case Type::BULLET:     name="upgrade_bullet.png"; break;
-        case Type::RANGE:      name="upgrade_range.png"; break;
-        case Type::DOUBLEJUMP: name="upgrade_doublejump.png"; break;
-        case Type::EXTRA_LIFE: name="upgrade_extralife.png"; break;
+        case Type::SPEED:      name="upgrade_speed.png"; break;//
+        case Type::JUMP:       name="upgrade_jump.png"; break;//
+        case Type::DAMAGE:     name="upgrade_damage.png"; break;//
+        case Type::BULLET:     name="upgrade_bullet.png"; break;//
+        case Type::RANGE:      name="upgrade_range.png"; break;//
+        case Type::DOUBLEJUMP: name="upgrade_doublejump.png"; break;//
+        case Type::EXTRA_LIFE: name="upgrade_extralife.png"; break;//
     }
     auto path = std::string("sprites/objects/upgrade/") + name;
     if (FileUtils::getInstance()->isFileExist(path)) _sprite->setTexture(path);

@@ -3,6 +3,7 @@
 #include "game/Player.h"
 #include "game/Enemy.h"
 #include "game/map/LevelBuilder.h"
+#include "2d/CCParallaxNode.h"
 
 class HUDLayer;
 

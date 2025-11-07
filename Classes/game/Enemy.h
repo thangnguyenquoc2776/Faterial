@@ -2,6 +2,10 @@
 #include "cocos2d.h"
 #include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
+#include "game/Entity.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
 class Player;
 
@@ -9,9 +13,8 @@ class Enemy : public Entity {
 public:
     CREATE_FUNC(Enemy);
     bool init() override;
+    void enablePhysics(const cocos2d::Vec2& pos, const cocos2d::Size& bodySize = cocos2d::Size(42, 42));
 
-    void enablePhysics(const cocos2d::Vec2& pos,
-                       const cocos2d::Size& bodySize = cocos2d::Size(42,42));
     void setPatrol(const cocos2d::Vec2& a, const cocos2d::Vec2& b);
 
     // Target + Aggro
@@ -37,9 +40,14 @@ protected:
     cocos2d::Sprite*      _sprite  = nullptr;
     cocos2d::PhysicsBody* _body    = nullptr;
     cocos2d::DrawNode*    _hpbar   = nullptr;
+    Player*               _target  = nullptr;
 
-    // AI
-    Player* _target = nullptr;
+    std::string _currentAnim;
+    
+    //!PLAY ANIMATION
+    void playAnim(const std::string& name, float delay, int frames, const std::string& className);
+    // !helper to build frames either from SpriteFrameCache (.plist) or from individual png files
+    virtual cocos2d::Vector<cocos2d::SpriteFrame*> buildFrames(const std::string& animName, int frameCount, const std::string& className);
     cocos2d::Vec2 _pA, _pB;
     int   _dir = +1;
     float _moveSpeed = 90.f;      // tuần tra
