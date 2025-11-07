@@ -17,6 +17,12 @@
 #include <algorithm>
 #include <vector>
 
+#include "ui/PauseLayer.h"
+#include "scenes/MenuScene.h"
+
+// Âm thanh
+#include "audio/Sound.h"
+
 USING_NS_CC;
 
 // ---------------------------
@@ -31,6 +37,9 @@ static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
     auto* body = n->getPhysicsBody();
     return body && ((static_cast<phys::Mask>(body->getCategoryBitmask()) & catMask) != 0u);
 }
+
+// SFX pickup gọn, nếu file thiếu AudioEngine sẽ bỏ qua, không crash
+static inline void playPickupSfx() { snd::sfxCoin(); }
 
 // ======================================================================
 
@@ -51,7 +60,7 @@ bool GameScene::init() {
     buildUICamera();
     buildHUD();
 
-    // build map 5 mini
+    // build map
     auto L = levels::buildLevel1(this, _vs, _origin);
     _groundTop    = L.groundTop;
     _segmentCount = L.segments;
@@ -101,8 +110,8 @@ bool GameScene::init() {
         auto body = PhysicsBody::createBox(Size(6, _vs.height));
         body->setDynamic(false);
         body->setCategoryBitmask((int)phys::CAT_GATE);
-        body->setCollisionBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));   // thay dòng cũ chỉ có PLAYER
-        body->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY)); // thay dòng cũ chỉ có PLAYER
+        body->setCollisionBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));
+        body->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));
 
         n->addComponent(body);
         n->setPosition({x, _groundTop + _vs.height*0.5f});
@@ -134,9 +143,14 @@ void GameScene::onEnter() {
     if (!_world && getScene()) _world = getScene()->getPhysicsWorld();
     CCASSERT(_world, "GameScene must be under a Scene with physics");
     _world->setGravity(Vec2(0, -980));
+
+    // BGM: nếu file không tồn tại thì AudioEngine bỏ qua, không crash
+    snd::playBgm("audio/bgm_main.mp3", true);
 }
 
-void GameScene::onExit() { Layer::onExit(); }
+void GameScene::onExit() {
+    Layer::onExit();
+}
 
 // ======================================================================
 // UI
@@ -159,34 +173,70 @@ void GameScene::buildHUD() {
 // ======================================================================
 void GameScene::_bindInput() {
     auto l = EventListenerKeyboard::create();
+
+    // -------------- Key Pressed --------------
     l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*) {
+        // Đang ở màn endflow
         if (_gameOver || _gameWin) {
-            if (c==EventKeyboard::KeyCode::KEY_R && _gameOver) _restartLevel();
-            if ((c==EventKeyboard::KeyCode::KEY_ENTER || c==EventKeyboard::KeyCode::KEY_KP_ENTER) && _gameWin) _returnMenu();
+            if (_gameOver && c == EventKeyboard::KeyCode::KEY_R) {
+                _restartLevel();
+            }
+            if (_gameWin && (c == EventKeyboard::KeyCode::KEY_ENTER ||
+                             c == EventKeyboard::KeyCode::KEY_KP_ENTER)) {
+                _returnMenu();
+            }
             return;
         }
+
         if (!_player) return;
+
         switch (c) {
+            case EventKeyboard::KeyCode::KEY_ESCAPE: {
+                // mở PauseOverlay nếu chưa có
+                if (!this->getChildByName("PauseOverlay")) {
+                    auto p = PauseLayer::create();
+                    p->setName("PauseOverlay");
+                    this->addChild(p, 10000);
+                }
+                break;
+            }
             case EventKeyboard::KeyCode::KEY_A:
-            case EventKeyboard::KeyCode::KEY_LEFT_ARROW:  _player->setMoveDir({-1.f,0.f}); break;
+            case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
+                _player->setMoveDir({-1.f, 0.f}); break;
+
             case EventKeyboard::KeyCode::KEY_D:
-            case EventKeyboard::KeyCode::KEY_RIGHT_ARROW: _player->setMoveDir({ 1.f,0.f}); break;
+            case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
+                _player->setMoveDir({ 1.f, 0.f}); break;
+
             case EventKeyboard::KeyCode::KEY_W:
             case EventKeyboard::KeyCode::KEY_UP_ARROW:
-            case EventKeyboard::KeyCode::KEY_SPACE: _player->jump(); break;
-            case EventKeyboard::KeyCode::KEY_J: _player->doShoot(); break;
-            case EventKeyboard::KeyCode::KEY_K: _player->doSlash(); break;
+            case EventKeyboard::KeyCode::KEY_SPACE:
+                _player->jump(); break;
+
+            case EventKeyboard::KeyCode::KEY_J:
+                _player->doShoot(); break;
+
+            case EventKeyboard::KeyCode::KEY_K:
+                _player->doSlash(); break;
+
             default: break;
         }
     };
+
+    // -------------- Key Released --------------
     l->onKeyReleased = [this](EventKeyboard::KeyCode c, Event*) {
         if (_gameOver || _gameWin || !_player) return;
-        if (c==EventKeyboard::KeyCode::KEY_A || c==EventKeyboard::KeyCode::KEY_LEFT_ARROW ||
-            c==EventKeyboard::KeyCode::KEY_D || c==EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
-            _player->setMoveDir({0.f,0.f});
+
+        if (c == EventKeyboard::KeyCode::KEY_A ||
+            c == EventKeyboard::KeyCode::KEY_LEFT_ARROW ||
+            c == EventKeyboard::KeyCode::KEY_D ||
+            c == EventKeyboard::KeyCode::KEY_RIGHT_ARROW) {
+            _player->setMoveDir({0.f, 0.f});
+        }
     };
+
     _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
-    _kb = l;
+    _kb = l; // lưu listener
 }
 
 // ======================================================================
@@ -213,6 +263,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         segByItem = std::max(0, std::min(segByItem, _segmentCount-1));
 
         if (auto star = dynamic_cast<Star*>(item)) {
+            playPickupSfx(); // gom sfx coin cho mọi pickup
             _starsSeg[segByItem] += 1;
             _setStars(_starsHave+1, _starsNeed);
             _addScore(50);
@@ -232,6 +283,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto coin = dynamic_cast<Coin*>(item)) {
+            playPickupSfx();
             _addScore(10);
             item->removeFromParent();
             return false;
@@ -240,6 +292,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         if (auto up = dynamic_cast<Upgrade*>(item)) {
             using T = Upgrade::Type;
             const auto t = up->type();
+            playPickupSfx();
             _addScore(25);
 
             if (_player) {
@@ -268,6 +321,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto chest = dynamic_cast<Chest*>(item)) {
+            playPickupSfx();
             chest->open();
             return false;
         }
@@ -447,7 +501,10 @@ void GameScene::_checkWin(){
     }
 }
 void GameScene::_restartLevel(){ Director::getInstance()->replaceScene(GameScene::createScene()); }
-void GameScene::_returnMenu(){ Director::getInstance()->replaceScene(TransitionFade::create(0.25f, Scene::create())); }
+void GameScene::_returnMenu(){
+    Director::getInstance()->replaceScene(TransitionFade::create(0.25f, MenuScene::createScene()));
+}
+
 void GameScene::_showOverlay(const std::string& text){
     if(!_overlay){
         _overlay = Label::createWithSystemFont(text, "Arial", 46);

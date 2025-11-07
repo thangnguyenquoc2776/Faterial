@@ -68,23 +68,23 @@
 - Classes/core/AppDelegate.cpp — 1209 bytes — ok
 - Classes/core/AppDelegate.h — 362 bytes — ok
 - Classes/core/CrashGuard.h — 195 bytes — ok
-- Classes/game/Enemy.cpp — 4886 bytes — ok
-- Classes/game/Enemy.h — 1162 bytes — ok
+- Classes/game/Enemy.cpp — 4865 bytes — ok
+- Classes/game/Enemy.h — 1659 bytes — ok
 - Classes/game/Entity.cpp — 187 bytes — ok
 - Classes/game/Entity.h — 788 bytes — ok
-- Classes/game/Player.cpp — 9577 bytes — ok
+- Classes/game/Player.cpp — 9706 bytes — ok
 - Classes/game/Player.h — 2927 bytes — ok
-- Classes/game/bosses/BossGolem.cpp — 6671 bytes — ok
-- Classes/game/bosses/BossGolem.h — 1216 bytes — ok
+- Classes/game/bosses/BossGolem.cpp — 10008 bytes — ok
+- Classes/game/bosses/BossGolem.h — 658 bytes — ok
 - Classes/game/enemies/Goomba.cpp — 327 bytes — ok
 - Classes/game/enemies/Goomba.h — 153 bytes — ok
 - Classes/game/enemies/Spiker.cpp — 328 bytes — ok
 - Classes/game/enemies/Spiker.h — 153 bytes — ok
 - Classes/game/loot/LootTable.cpp — 3517 bytes — ok
 - Classes/game/loot/LootTable.h — 1041 bytes — ok
-- Classes/game/map/LevelBuilder.cpp — 8530 bytes — ok
+- Classes/game/map/LevelBuilder.cpp — 9491 bytes — ok
 - Classes/game/map/LevelBuilder.h — 442 bytes — ok
-- Classes/game/objects/Chest.cpp — 1478 bytes — ok
+- Classes/game/objects/Chest.cpp — 1863 bytes — ok
 - Classes/game/objects/Chest.h — 246 bytes — ok
 - Classes/game/objects/Coin.cpp — 1583 bytes — ok
 - Classes/game/objects/Coin.h — 279 bytes — ok
@@ -100,13 +100,13 @@
 - Classes/game/objects/Upgrade.h — 1042 bytes — ok
 - Classes/game/upgrades/UpgradeSystem.cpp — 1454 bytes — ok
 - Classes/game/upgrades/UpgradeSystem.h — 1099 bytes — ok
-- Classes/game/weapon/Bullet.cpp — 1809 bytes — ok
+- Classes/game/weapon/Bullet.cpp — 2103 bytes — ok
 - Classes/game/weapon/Bullet.h — 473 bytes — ok
-- Classes/game/weapon/Slash.cpp — 2497 bytes — ok
+- Classes/game/weapon/Slash.cpp — 2586 bytes — ok
 - Classes/game/weapon/Slash.h — 381 bytes — ok
-- Classes/physics/PhysicsDefs.h — 3585 bytes — ok
-- Classes/scenes/GameScene.cpp — 15179 bytes — ok
-- Classes/scenes/GameScene.h — 1996 bytes — ok
+- Classes/physics/PhysicsDefs.h — 3795 bytes — ok
+- Classes/scenes/GameScene.cpp — 18338 bytes — ok
+- Classes/scenes/GameScene.h — 1950 bytes — ok
 - Classes/scenes/MenuScene.cpp — 1644 bytes — ok
 - Classes/scenes/MenuScene.h — 375 bytes — ok
 - Classes/ui/HUDLayer.cpp — 5546 bytes — ok
@@ -426,28 +426,36 @@ Folder Classes/game
 File Enemy.cpp
 #include "game/Enemy.h"
 #include "game/Player.h"
+
 #include "game/objects/Coin.h"
 #include "game/objects/Upgrade.h"
 #include "game/objects/Chest.h"
+#include "game/loot/LootTable.h"
+
+#include "physics/PhysicsDefs.h"
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
+
+#include "2d/CCDrawNode.h"
 #include "base/ccRandom.h"
-#include "game/loot/LootTable.h"
+
 USING_NS_CC;
+
+static inline float sgn(float x) { return (x > 0.f) ? 1.f : (x < 0.f ? -1.f : 0.f); }
 
 bool Enemy::init() {
     if (!Entity::init()) return false;
     setTagEx((int)phys::Tag::ENEMY);
 
     _sprite = Sprite::create();
-    _sprite->setTextureRect(Rect(0,0,42,42));
-    _sprite->setColor(Color3B(200,70,70));
+    _sprite->setTextureRect(Rect(0, 0, 42, 42));
+    _sprite->setColor(Color3B(200, 70, 70));
     addChild(_sprite);
 
     _hpbar = DrawNode::create();
     addChild(_hpbar, 2);
 
-    schedule([this](float dt){ updateEnemy(dt); }, "enemy.tick");
+    schedule([this](float dt) { updateEnemy(dt); }, "enemy.tick");
     return true;
 }
 
@@ -458,9 +466,10 @@ void Enemy::enablePhysics(const Vec2& pos, const Size& bodySize) {
     _updateHpBar();
 }
 
-PhysicsBody* Enemy::buildOrUpdateBody(const Size& sz) {
-    Size box = (sz.width<1||sz.height<1)? Size(42,42) : sz;
+PhysicsBody* Enemy::buildOrUpdateBody(const Size& szIn) {
+    Size box = (szIn.width < 1 || szIn.height < 1) ? Size(42, 42) : szIn;
     PhysicsBody* body = _body;
+
     if (!body) {
         body = PhysicsBody::createBox(box, PhysicsMaterial(0.2f, 0.0f, 0.4f));
         body->setDynamic(true);
@@ -469,8 +478,9 @@ PhysicsBody* Enemy::buildOrUpdateBody(const Size& sz) {
     } else {
         auto shapes = body->getShapes();
         for (auto s : shapes) body->removeShape(s);
-        body->addShape(PhysicsShapeBox::create(box, PhysicsMaterial(0.2f,0.0f,0.4f)));
+        body->addShape(PhysicsShapeBox::create(box, PhysicsMaterial(0.2f, 0.0f, 0.4f)));
     }
+
     body->setLinearDamping(0.1f);
     body->setMass(1.0f);
     return body;
@@ -492,46 +502,47 @@ void Enemy::setPatrol(const Vec2& a, const Vec2& b) {
 
 void Enemy::updateEnemy(float) {
     if (!_body) return;
-    if (_pA != _pB) {
+
+    Vec2 v = _body->getVelocity();
+
+    // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
+    bool chasing = false;
+    if (_aggroEnabled && _target) {
+        float dx = _target->getPositionX() - getPositionX();
+        float dy = _target->getPositionY() - getPositionY();
+        if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
+            _dir = (dx >= 0 ? +1 : -1);
+            v.x = _dir * _chaseSpeed;
+            chasing = true;
+        }
+    }
+
+    // Không đuổi -> tuần tra giữa 2 mốc
+    if (!chasing && _pA != _pB) {
         float x = getPositionX();
         if (_dir > 0 && x >= _pB.x) _dir = -1;
         else if (_dir < 0 && x <= _pA.x) _dir = +1;
-
-        Vec2 v = _body->getVelocity();
         v.x = _dir * _moveSpeed;
-        v.y = std::max(v.y, -900.0f);
-        _body->setVelocity(v);
     }
+
+    v.y = std::max(v.y, -900.0f);
+    _body->setVelocity(v);
 }
 
-void Enemy::_updateHpBar(){
+void Enemy::_updateHpBar() {
     _hpbar->clear();
     const float w = 46.f, h = 4.f;
-    const float t = std::max(0.f, std::min(1.f, _hp/(float)_maxHp));
-    Vec2 base(-w*0.5f, 28.f);
-    _hpbar->drawSolidRect(base, base+Vec2(w,h), Color4F(0,0,0,0.6f));
-    _hpbar->drawSolidRect(base+Vec2(1,1), base+Vec2(1+(w-2)*t, h-1), Color4F(0.9f,0.2f,0.2f,0.95f));
+    const float t = std::max(0.f, std::min(1.f, _hp / (float)_maxHp));
+    Vec2 base(-w * 0.5f, 28.f);
+    _hpbar->drawSolidRect(base, base + Vec2(w, h), Color4F(0, 0, 0, 0.6f));
+    _hpbar->drawSolidRect(base + Vec2(1, 1), base + Vec2(1 + (w - 2) * t, h - 1),
+                          Color4F(0.9f, 0.2f, 0.2f, 0.95f));
 }
 
-void Enemy::_dropLoot(){
-    float r = RandomHelper::random_real(0.f,1.f);
-    Node* parent = getParent(); if (!parent) return;
-
-    if (r < 0.05f) { // chest 5%
-        auto ch = Chest::create();
-        ch->setPosition(getPosition());
-        parent->addChild(ch, 5);
-    } else if (r < 0.30f) { // upgrade 25%
-        auto u = Upgrade::createRandom();
-        if (u){ u->setPosition(getPosition()+Vec2(0,10)); parent->addChild(u,5); }
-    } else { // coins
-        int n = RandomHelper::random_int(1,3);
-        for (int i=0;i<n;++i){
-            auto c = Coin::create();
-            c->setPosition(getPosition()+Vec2(RandomHelper::random_real(-12.f,12.f), 6));
-            parent->addChild(c,5);
-        }
-    }
+// Rơi đồ: đẩy về LootTable (đã loại STAR)
+void Enemy::_dropLoot() {
+    if (auto parent = getParent())
+        LootTable::dropAt(parent, getPosition());
 }
 
 void Enemy::takeHit(int dmg) {
@@ -543,39 +554,36 @@ void Enemy::takeHit(int dmg) {
     if (_hp <= 0) {
         _dead = true;
 
-        // HOÃN mọi thao tác phá/loot/bitmask sang frame kế tiếp
-        this->scheduleOnce([this](float){
-            // tắt va chạm triệt để, không đụng setEnable (không tồn tại)
+        // Ngắt tương tác vật lý rồi rơi đồ đúng 1 lần
+        scheduleOnce([this](float) {
             if (_body) {
-                _body->setVelocity(cocos2d::Vec2::ZERO);
+                _body->setVelocity(Vec2::ZERO);
                 _body->setDynamic(false);
                 _body->setCategoryBitmask(0);
                 _body->setCollisionBitmask(0);
                 _body->setContactTestBitmask(0);
             }
-            if (auto parent = getParent()) {
-                LootTable::dropAt(parent, getPosition()); // coin/upgrade random
-            }
-            this->runAction(cocos2d::Sequence::create(
-                cocos2d::FadeOut::create(0.08f),
-                cocos2d::CallFunc::create([this]{ removeFromParent(); }),
+
+            _dropLoot(); // <- duy nhất chỗ này, KHÔNG Star
+
+            runAction(Sequence::create(
+                FadeOut::create(0.08f),
+                CallFunc::create([this] { removeFromParent(); }),
                 nullptr
             ));
         }, 0.0f, "enemy_die_defer");
-
         return;
     }
 
     if (_sprite) {
-        _sprite->runAction(cocos2d::Sequence::create(
-            cocos2d::TintTo::create(0.0f, 255,120,120),
-            cocos2d::DelayTime::create(0.05f),
-            cocos2d::TintTo::create(0.0f, 200,70,70),
+        _sprite->runAction(Sequence::create(
+            TintTo::create(0.0f, 255, 120, 120),
+            DelayTime::create(0.05f),
+            TintTo::create(0.0f, 200, 70, 70),
             nullptr
         ));
     }
 }
-
 
 File Enemy.h
 #pragma once
@@ -593,10 +601,15 @@ public:
     void enablePhysics(const cocos2d::Vec2& pos,
                        const cocos2d::Size& bodySize = cocos2d::Size(42,42));
     void setPatrol(const cocos2d::Vec2& a, const cocos2d::Vec2& b);
-    void setTarget(Player* p) { _target = p; }
+
+    // Target + Aggro
+    void setTarget(Player* p)             { _target = p; }
+    void setAggroEnabled(bool on)         { _aggroEnabled = on; }
+    void setAggroRange(float r)           { _aggroRange = std::max(0.f, r); }
+    void setChaseSpeed(float v)           { _chaseSpeed = std::max(10.f, v); }
 
     virtual void takeHit(int dmg);
-    void updateEnemy(float dt);
+    virtual void updateEnemy(float dt);   // có chase theo aggro
 
     void setMoveSpeed(float v) { _moveSpeed = v; }
     void setMaxHp(int v) { _maxHp = _hp = std::max(1, v); _updateHpBar(); }
@@ -613,13 +626,17 @@ protected:
     cocos2d::PhysicsBody* _body    = nullptr;
     cocos2d::DrawNode*    _hpbar   = nullptr;
 
+    // AI
     Player* _target = nullptr;
     cocos2d::Vec2 _pA, _pB;
     int   _dir = +1;
-    float _moveSpeed = 90.f;
+    float _moveSpeed = 90.f;      // tuần tra
+    float _chaseSpeed = 140.f;    // đuổi
+    float _aggroRange = 220.f;    // tầm phát hiện (theo X, kèm giới hạn Y)
+    bool  _aggroEnabled = true;
 
-    int _hp = 2;
-    int _maxHp = 2;
+    // Stat
+    int _hp = 2, _maxHp = 2;
     bool _dead = false;
 };
 
@@ -744,12 +761,17 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
 
 void Player::applyPlayerMasks() {
     if (!_body) return;
+
+    // va chạm cứng: như cũ
     const phys::Mask collide =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
         phys::CAT_GATE  | phys::CAT_CRATE;
+
+    // LIÊN HỆ (contact) — THÊM CAT_ENEMY_PROJ  ⬇⬇⬇
     const phys::Mask contact =
-        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ITEM   |
-        phys::CAT_BULLET| phys::CAT_SENSOR;
+        phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ENEMY_PROJ |
+        phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
+
     phys::setMasks(_body, phys::CAT_PLAYER, collide, contact);
 }
 
@@ -1040,245 +1062,314 @@ private:
 Folder Classes/game/bosses
 File BossGolem.cpp
 #include "game/bosses/BossGolem.h"
-#include "game/objects/Star.h"
-#include "game/loot/LootTable.h"
-#include "game/weapon/Bullet.h"
+#include "game/Player.h"                  // dùng Player* cho target
+#include "game/objects/Star.h"            // rơi Star khi chết
+
+#include "physics/PhysicsDefs.h"
 #include "2d/CCDrawNode.h"
 #include "physics/CCPhysicsBody.h"
-#include "game/Player.h" 
+#include "physics/CCPhysicsShape.h"
+#include "base/ccRandom.h"
+
+#include <vector>
 #include <algorithm>
+#include <cmath>
 
-USING_NS_CC;
+using namespace cocos2d;
 
-BossGolem* BossGolem::create(){
-    auto p = new(std::nothrow) BossGolem();
+BossGolem* BossGolem::create() {
+    auto p = new (std::nothrow) BossGolem();
     if (p && p->init()) { p->autorelease(); return p; }
     CC_SAFE_DELETE(p); return nullptr;
 }
 
-bool BossGolem::init(){
+bool BossGolem::init() {
     if (!Enemy::init()) return false;
 
     setMaxHp(36);
-    setMoveSpeed(_walkSpeed);
+    setMoveSpeed(70.f);
+    _cd = 1.0f;
 
-    if (_sprite){
+    if (_sprite) {
         _sprite->setTextureRect(Rect(0,0,72,72));
         _sprite->setColor(Color3B(120,170,255));
         _sprite->setScale(1.2f);
     }
 
+    // hitbox thân boss
     enablePhysics(getPosition(), Size(72,72));
-    schedule(CC_SCHEDULE_SELECTOR(BossGolem::_tick));
-    _enter(State::IDLE);
+
+    // AI tick
+    schedule([this](float dt){ this->_tickBoss(dt); }, "boss.ai");
     return true;
 }
 
-// ================== AI core ==================
-void BossGolem::_enter(State s){
-    _st = s; _tState = 0.f;
-    // nhấn hiệu ứng màu nhẹ khi chuẩn bị ra chiêu
-    if (_sprite){
-        switch(_st){
-            case State::CHARGE:  _sprite->setColor(Color3B(190,180,255)); break;
-            case State::SLAM:    _sprite->setColor(Color3B(200,220,255)); break;
-            default:             _sprite->setColor(Color3B(120,170,255)); break;
-        }
-    }
-}
-
-void BossGolem::_updateMove(float dt){
-    if (!_body) return;
-
-    // nếu có Player, quyết định hướng rượt
-    Vec2 pos = getPosition();
-    Vec2 v   = _body->getVelocity();
-
-    float vx = 0.f;
-    if (_target){
-        float dx = _target->getPositionX() - pos.x;
-        // xoay mặt theo mục tiêu
-        _dir = (dx >= 0.f) ? +1 : -1;
-
-        float adx = std::abs(dx);
-        if (adx > _keepRange)       vx = _walkSpeed * _dir;   // tiến gần
-        else if (adx < _keepRange*0.75f) vx = -_walkSpeed*0.6f * _dir; // lùi nhẹ
-        else                        vx = 0.f;
-    }else{
-        // không có target: tuần tra Enemy::updateEnemy đã lo; giữ nhẹ
-        vx = _dir * _walkSpeed*0.5f;
-    }
-
-    v.x = vx;
-    v.y = std::max(v.y, -900.f);
-    _body->setVelocity(v);
-}
-
-void BossGolem::_spawnHurtZone(float radius, float durSec){
-    // Vùng gây damage tạm thời (ENEMY sensor) => GameScene sẽ trừ HP Player khi va chạm
-    auto n = Node::create();
-    auto pb = PhysicsBody::createCircle(radius, PhysicsMaterial(0,0,0));
-    pb->setDynamic(false);
-    pb->setGravityEnable(false);
-    pb->setCategoryBitmask((int)phys::CAT_ENEMY);
-    pb->setCollisionBitmask(0); // sensor
-    pb->setContactTestBitmask((int)phys::CAT_PLAYER);
-    n->addComponent(pb);
-    n->setPosition(getPosition());
-    if (auto p = getParent()) p->addChild(n, 6);
-
-    // hiệu ứng nhỏ
-    if (auto dn = DrawNode::create()){
-        dn->drawSolidCircle(Vec2::ZERO, radius, 0, 22, Color4F(0.8f,0.9f,1.f,0.25f));
-        n->addChild(dn);
-    }
-
-    n->runAction(Sequence::create(DelayTime::create(std::max(0.05f, durSec)),
-                                  CallFunc::create([n]{ n->removeFromParent(); }), nullptr));
-}
-
-void BossGolem::_beginCharge(){
-    if (!_body) return;
-    // lao cực nhanh theo hướng đang facing
-    _body->setVelocity(Vec2(_chargeSpeed * _dir, 120.f));
-    _enter(State::CHARGE);
-}
-
-void BossGolem::_doSlam(){
-    // windup -> gây AOE
-    runAction(Sequence::create(
-        DelayTime::create(_slamWindup),
-        CallFunc::create([this](){
-            _spawnHurtZone(110.f, 0.18f);   // vòng AOE
-            if (_body) _body->setVelocity(Vec2(_body->getVelocity().x * 0.2f, 0)); // khựng lại
-        }),
-        DelayTime::create(0.12f),
-        CallFunc::create([this](){ _enter(State::RECOVER); }),
-        nullptr));
-    _enter(State::SLAM);
-    _tSlamCD = _slamCD;
-}
-
-void BossGolem::_tick(float dt){
-    if (!_body) return;
-
-    _tState   += dt;
-    _tSlamCD  = std::max(0.f, _tSlamCD   - dt);
-    _tChargeCD= std::max(0.f, _tChargeCD - dt);
-
-    const bool hasP = (_target != nullptr);
-    float dist = hasP ? getPosition().distance(_target->getPosition()) : 99999.f;
-
-    switch(_st){
-        case State::IDLE:
-        case State::CHASE: {
-            // di chuyển cơ bản
-            _updateMove(dt);
-            // ưu tiên đập đất nếu đủ gần và còn CD
-            if (hasP && dist < _slamRange && _tSlamCD <= 0.f){
-                _doSlam(); break;
-            }
-            // thỉnh thoảng mở charge để áp sát
-            if (hasP && dist < _aggroRange && dist > _slamRange*0.8f && _tChargeCD <= 0.f){
-                _beginCharge(); break;
-            }
-            if (_st == State::IDLE && hasP && dist < _aggroRange) _enter(State::CHASE);
-        } break;
-
-        case State::CHARGE: {
-            // hết thời gian charge -> recover
-            if (_tState >= _chargeDur){ _tChargeCD = _chargeCD; _enter(State::RECOVER); }
-        } break;
-
-        case State::SLAM: {
-            // đã schedule chuyển sang RECOVER trong _doSlam()
-        } break;
-
-        case State::RECOVER: {
-            // đứng thở 1 nhịp rồi quay lại chase
-            if (_tState >= _recoverTime) _enter(State::CHASE);
-        } break;
-    }
-}
-
-// ================== death drop ==================
 void BossGolem::takeHit(int dmg){
-    if (_dead) return;
-    _hp -= std::max(1, dmg);
-    _updateHpBar();
+    if (_dead || _dying) return;
 
-    if (_hp <= 0){
-        _dead = true;
-        this->scheduleOnce([this](float){
-            if (_body) {
-                _body->setVelocity(Vec2::ZERO);
-                _body->setDynamic(false);
-                _body->setCategoryBitmask(0);
-                _body->setCollisionBitmask(0);
-                _body->setContactTestBitmask(0);
-            }
-            if (auto parent = getParent()) {
-                // Rơi ★ để hoàn màn
-                if (auto star = Star::create()){
-                    star->setPosition(getPosition() + Vec2(0, 48));
-                    parent->addChild(star, 6);
-                }
-            }
-            runAction(Sequence::create(FadeOut::create(0.12f),
-                                       CallFunc::create([this]{ removeFromParent(); }),
-                                       nullptr));
-        }, 0.0f, "boss_die_defer");
-        return;
-    }
+    const int hit = std::max(1, dmg);
+    const int finalHp = _hp - hit;
 
-    if (_sprite){
+    // hiệu ứng trúng đòn
+    if (_sprite) {
         _sprite->runAction(Sequence::create(
-            TintTo::create(0.0f, 150,200,255),
-            DelayTime::create(0.05f),
+            TintTo::create(0.0f, 255,150,150),
+            DelayTime::create(0.06f),
             TintTo::create(0.0f, 120,170,255),
             nullptr
         ));
     }
+
+    // chưa chết -> dùng logic Enemy thường (giảm máu + cập nhật thanh HP)
+    if (finalHp > 0) { Enemy::takeHit(dmg); return; }
+
+    // ====== chết: KHÔNG gọi Enemy::takeHit để né LootTable (coin/upgrade) ======
+    _hp = 0;
+    _dead  = true;
+    _dying = true;
+
+    // tắt AI và "đóng băng" body (không tháo shape ngay trong step hiện tại)
+    unschedule("boss.ai");
+    if (_body) {
+        _body->setVelocity(Vec2::ZERO);
+        _body->setContactTestBitmask(0);
+        _body->setCollisionBitmask((int)phys::CAT_WORLD); // vẫn đứng yên nếu còn thấy
+        _body->setEnabled(false);                         // tách khỏi physics world
+    }
+
+    // Hoãn 1 nhịp ngắn để thoát contact, rồi spawn Star + xóa boss
+    this->runAction(Sequence::create(
+        FadeOut::create(0.05f),
+        DelayTime::create(0.02f),                 // QUAN TRỌNG: hoãn 1 frame
+        CallFunc::create([this](){
+            if (auto parent = getParent()) {
+                auto star = Star::create();
+                if (star) {
+                    star->setPosition(getPosition() + Vec2(0, 24.f));
+                    parent->addChild(star, 7);
+                }
+            }
+            removeFromParent();
+        }),
+        nullptr
+    ));
+}
+
+// =====================
+// Helpers nội bộ
+// =====================
+namespace {
+    // projectile mask cho ĐẠN ĐỊCH (đã định nghĩa CAT_ENEMY_PROJ trong PhysicsDefs)
+    inline void setEnemyProjMasks(cocos2d::PhysicsBody* b) {
+        b->setCategoryBitmask((int)phys::CAT_ENEMY_PROJ);
+        b->setCollisionBitmask((int)(phys::CAT_WORLD | phys::CAT_PLAYER));
+        b->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_BULLET | phys::CAT_SENSOR));
+    }
+
+    // AOE vòng tròn sensor, tự huỷ nhanh
+    Node* makeAoeRing(const Vec2& center, float radius, float lifeSec = 0.25f) {
+        auto n = Node::create(); n->setPosition(center);
+        n->setName("enemy_proj");
+
+        auto dn = DrawNode::create();
+        dn->drawCircle(Vec2::ZERO, radius, 0, 28, false, 1.8f, 1.8f, Color4F(1.f,0.8f,0.4f,0.7f));
+        dn->drawSolidCircle(Vec2::ZERO, radius*0.85f, 0, 24, Color4F(1,0.8f,0.4f,0.10f));
+        n->addChild(dn);
+
+        auto body = PhysicsBody::createCircle(radius, PhysicsMaterial(0,0,0));
+        body->setDynamic(false);
+        for (auto s : body->getShapes()) s->setSensor(true);
+        setEnemyProjMasks(body);
+        n->addComponent(body);
+
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
+        return n;
+    }
+
+    // Đạn thường: bay thẳng
+    Node* makeBullet(const Vec2& origin, const Vec2& velocity, float lifeSec = 1.8f) {
+        auto n = Node::create(); n->setPosition(origin);
+        n->setName("enemy_proj");
+
+        auto dn = DrawNode::create();
+        dn->drawSolidCircle(Vec2::ZERO, 6.f, 0, 18, Color4F(0.95f,0.4f,0.2f,1));
+        n->addChild(dn);
+
+        auto body = PhysicsBody::createCircle(6.f, PhysicsMaterial(0,0,0));
+        body->setDynamic(true);
+        body->setGravityEnable(false);
+        body->setRotationEnable(false);
+        setEnemyProjMasks(body);
+        n->addComponent(body);
+        body->setVelocity(velocity);
+        body->setLinearDamping(0.02f);
+
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
+        return n;
+    }
+
+    // Đạn homing: bẻ lái dần
+    Node* makeHoming(const Vec2& origin, Node* target,
+                     float speed = 240.f, float turnRate = 6.0f, float lifeSec = 2.2f) {
+        auto n = Node::create(); n->setPosition(origin);
+        n->setName("enemy_proj");
+
+        auto dn = DrawNode::create();
+        dn->drawSolidCircle(Vec2::ZERO, 5.f, 0, 18, Color4F(0.9f,0.9f,1.f,1));
+        n->addChild(dn);
+
+        auto body = PhysicsBody::createCircle(5.f, PhysicsMaterial(0,0,0));
+        body->setDynamic(true);
+        body->setGravityEnable(false);
+        body->setRotationEnable(false);
+        setEnemyProjMasks(body);
+        n->addComponent(body);
+
+        n->schedule([n, target, speed, turnRate](float dt){
+            auto b = n->getPhysicsBody(); if (!b || !target || !target->getParent()) return;
+            Vec2 from = n->getPosition(), to = target->getPosition();
+            Vec2 dir  = (to - from).getNormalized();
+            Vec2 desired = dir * speed;
+            Vec2 v = b->getVelocity();
+            float alpha = cocos2d::clampf(turnRate * dt, 0.f, 1.f);
+            v = v * (1.f - alpha) + desired * alpha;
+            if (v.lengthSquared() < speed*speed*0.25f) v = desired;
+            b->setVelocity(v);
+        }, "enemy.homing");
+
+        n->runAction(Sequence::create(
+            DelayTime::create(std::max(0.05f, lifeSec)),
+            CallFunc::create([n]{ n->removeFromParent(); }),
+            nullptr));
+        return n;
+    }
+} // namespace (helpers)
+
+// =====================
+// AI patterns
+// =====================
+void BossGolem::_tickBoss(float dt){
+    if (_dead || !_body) return;
+
+    // KHÓA HOÀN TOÀN khi chưa aggro (bật ở mini cuối trong GameScene)
+    if (!_aggroEnabled) {
+        Vec2 v = _body->getVelocity();
+        v.x = 0.f;
+        v.y = std::max(v.y, -900.f);
+        _body->setVelocity(v);
+        return;
+    }
+
+    Player* p = (_target ? dynamic_cast<Player*>(_target) : nullptr);
+    if (!p) return;
+
+    Vec2 bp = getPosition();
+    Vec2 pp = p->getPosition();
+    float dist = bp.distance(pp);
+    float dx   = pp.x - bp.x;
+
+    const float AGGRO = 520.f;
+    if (dist > AGGRO) {
+        // di chuyển nhẹ khi chưa vào tầm
+        Vec2 v = _body->getVelocity();
+        v.x = (dx > 0 ? +1 : -1) * std::min(_moveSpeed * 0.6f, 80.f);
+        v.y = std::max(v.y, -900.f);
+        _body->setVelocity(v);
+        _cd -= dt * 0.5f;
+        return;
+    }
+
+    _cd -= dt;
+    if (_cd > 0.f) {
+        Vec2 v = _body->getVelocity();
+        v.x *= 0.9f;
+        v.y = std::max(v.y, -900.f);
+        _body->setVelocity(v);
+        return;
+    }
+
+    // Ưu tiên Radial; máu thấp thì hung hăng hơn
+    int r = (_hp <= _maxHp/2) ? RandomHelper::random_int(0, 3)
+                              : RandomHelper::random_int(0, 2);
+    if (r <= 1) _radialBurst(pp);
+    else        _blinkStrike(pp);
+
+    _cd = 1.5f + RandomHelper::random_real(0.2f, 0.9f);
+}
+
+void BossGolem::_blinkStrike(const Vec2& playerPos){
+    auto parent = getParent(); if (!parent) return;
+    Vec2 bp = getPosition();
+    int dir = (playerPos.x >= bp.x) ? +1 : -1;
+
+    if (_sprite) _sprite->runAction(TintTo::create(0.0f, 200,240,255));
+    runAction(Sequence::create(
+        DelayTime::create(0.12f), // telegraph ngắn
+        CallFunc::create([=](){
+            setPosition(bp + Vec2(dir * 180.f, 0));
+            auto aoe = makeAoeRing(getPosition(), 90.f, 0.24f);
+            if (aoe) parent->addChild(aoe, 7);
+            if (_sprite) _sprite->runAction(TintTo::create(0.0f, 120,170,255));
+        }),
+        nullptr
+    ));
+}
+
+void BossGolem::_radialBurst(const Vec2& /*playerPos*/){
+    auto parent = getParent(); if (!parent) return;
+
+    const int N = RandomHelper::random_int(12, 16);
+    const int K = RandomHelper::random_int(2, 4); // số viên homing
+    const float S = 260.f;
+
+    std::vector<int> homingIdx; homingIdx.reserve(K);
+    for (int i=0; i<K; ++i) homingIdx.push_back(RandomHelper::random_int(0, N-1));
+
+    float ang0 = RandomHelper::random_real(0.f, 3.1415926f);
+    for (int i=0; i<N; ++i){
+        float a = ang0 + i * (2*3.1415926f / N);
+        Vec2 dir(std::cos(a), std::sin(a));
+        bool isHoming = (std::find(homingIdx.begin(), homingIdx.end(), i) != homingIdx.end());
+
+        Node* b = isHoming ? makeHoming(getPosition(), _target, 240.f, 6.0f, 2.2f)
+                           : makeBullet(getPosition(), dir * S, 1.8f);
+        if (b) parent->addChild(b, 6);
+    }
+
+    if (_sprite) _sprite->runAction(Sequence::create(
+        TintTo::create(0.0f, 255,230,140),
+        DelayTime::create(0.18f),
+        TintTo::create(0.0f, 120,170,255),
+        nullptr
+    ));
 }
 
 File BossGolem.h
 #pragma once
 #include "game/Enemy.h"
+class Player;
 
 class BossGolem : public Enemy {
 public:
     static BossGolem* create();
     bool init() override;
+
+    // Ghi đè để xử lý chết an toàn + rơi Star (không dùng LootTable)
     void takeHit(int dmg) override;
 
 private:
-    // --- AI state ---
-    enum class State { IDLE, CHASE, CHARGE, SLAM, RECOVER };
-    State _st = State::IDLE;
+    void _tickBoss(float dt);
+    void _blinkStrike(const cocos2d::Vec2& playerPos); // dịch chuyển + AOE
+    void _radialBurst(const cocos2d::Vec2& playerPos); // vòng đạn + vài viên homing
 
-    void _tick(float dt);
-    void _enter(State s);
-    void _updateMove(float dt);
-    void _beginCharge();
-    void _doSlam();
-    void _spawnHurtZone(float radius, float durSec);
-
-    // --- params ---
-    float _aggroRange   = 460.f;   // phát hiện player
-    float _keepRange    = 280.f;   // khoảng ưa thích khi rượt
-    float _slamRange    = 140.f;   // gần thì đập đất
-    float _walkSpeed    = 95.f;
-    float _chargeSpeed  = 520.f;
-    float _chargeDur    = 0.65f;
-    float _recoverTime  = 0.50f;
-    float _slamWindup   = 0.32f;   // trễ trước khi gây sát thương
-    float _slamCD       = 2.2f;    // hồi chiêu đập đất
-    float _chargeCD     = 3.0f;    // hồi chiêu lao
-
-    // --- timers ---
-    float _tState   = 0.f;   // thời gian trong trạng thái hiện tại
-    float _tSlamCD  = 0.f;
-    float _tChargeCD= 0.f;
+    float _cd = 1.0f;   // cooldown nội bộ luân phiên pattern
+    bool  _dying = false; // tránh gọi chết nhiều lần trong cùng 1 frame
 };
 
 
@@ -1477,19 +1568,22 @@ File LevelBuilder.cpp
 #include "physics/PhysicsDefs.h"
 
 #include "game/Enemy.h"
+#include "game/enemies/Goomba.h"
+#include "game/enemies/Spiker.h"
+#include "game/bosses/BossGolem.h"
+
 #include "game/objects/Coin.h"
 #include "game/objects/Chest.h"
 #include "game/objects/Upgrade.h"
 #include "game/objects/Star.h"
-#include "game/bosses/BossGolem.h"   // <<< THÊM
 #include "2d/CCDrawNode.h"
 
 USING_NS_CC;
 namespace levels {
 
 // ===== tuning =====
-static const int   HP_BY_SEG[5]   = {4, 5, 6, 8, 12};
-static const float SPD_BY_SEG[5]  = {70.f, 80.f, 90.f, 105.f, 115.f};
+static const int   HP_BY_SEG[5]   = {3, 4, 5, 7, 36}; // boss ở seg5 dùng trong BossGolem
+static const float SPD_BY_SEG[5]  = {70.f, 85.f, 95.f, 110.f, 0.f};
 static const Upgrade::Type UPG_BY_SEG[5] = {
     Upgrade::Type::SPEED,
     Upgrade::Type::JUMP,
@@ -1524,11 +1618,9 @@ static void coinLine(Node* root, const Vec2& start, int n, float stepX){
         root->addChild(c,5);
     }
 }
-
 static void placeChest(Node* root, const Vec2& p){
     if (auto ch = Chest::create()){ ch->setPosition(p); root->addChild(ch,5); }
 }
-
 // CHỈ tạo đúng loại, KHÔNG set duration ở đây
 static void placeUpgrade(Node* root, Upgrade::Type t, const Vec2& p){
     Upgrade* u = Upgrade::create(t);
@@ -1536,9 +1628,19 @@ static void placeUpgrade(Node* root, Upgrade::Type t, const Vec2& p){
     if (u) { u->setPosition(p); root->addChild(u, 5); }
 }
 
-static Enemy* spawnEnemy(Node* root, const Vec2& pos, const Vec2& pa, const Vec2& pb, int hp, float spd){
-    auto e = Enemy::create();
+// Spawns
+static Enemy* spawnGoomba(Node* root, const Vec2& pos, const Vec2& pa, const Vec2& pb, int hp, float spd){
+    auto e = Goomba::create();
     e->enablePhysics(pos, Size(38,38));
+    e->setPatrol(pa, pb);
+    e->setMaxHp(hp);
+    e->setMoveSpeed(spd);
+    root->addChild(e, 4);
+    return e;
+}
+static Enemy* spawnSpiker(Node* root, const Vec2& pos, const Vec2& pa, const Vec2& pb, int hp, float spd){
+    auto e = Spiker::create();
+    e->enablePhysics(pos, Size(40,40));
     e->setPatrol(pa, pb);
     e->setMaxHp(hp);
     e->setMoveSpeed(spd);
@@ -1553,6 +1655,7 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
     L.groundTop    = origin.y + 28.f;
     L.playerSpawn  = origin + Vec2(80.f, L.groundTop + 40.f);
 
+    // ground dài
     makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 24.f),
               Color4F(0.20f,0.85f,0.20f,1));
 
@@ -1575,6 +1678,7 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
         auto  UT  = UPG_BY_SEG[s];
 
         switch (s) {
+        // ===== Segment 1 — tutorial, Goomba chậm, nhảy bậc thang
         case 0: {
             float x1 = baseX + vs.width*0.22f, y1 =  80.f;
             float x2 = std::min(x1 + GAP_X, baseX + vs.width*0.42f), y2 = y1 + JUMP_DY;
@@ -1583,13 +1687,16 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             platform(x2, y2, P_W);
             platform(x3, y3, P_W-10.f);
 
+            // trụ cản nho nhỏ cho đỡ trống
+            makeSolid(root, Rect(baseX+vs.width*0.78f, g, 20, 70), Color4F(0.25f,0.8f,0.25f,1));
+
             coinLine(root, {baseX + 140, g+120}, 4, 36.f);
             placeUpgrade(root, UT, {x2 + P_W*0.5f, g + y2 + 26.f});
             placeChest(root, {baseX + vs.width*0.84f, g+36});
 
-            auto e = spawnEnemy(root, {x2 + P_W*0.5f, g+y2 + 22.f},
-                                {x2-80.f, g+y2 + 22.f}, {x2+80.f, g+y2 + 22.f},
-                                EHP, ESP);
+            auto e = spawnGoomba(root, {x2 + P_W*0.5f, g+y2 + 22.f},
+                                 {x2-80.f, g+y2 + 22.f}, {x2+80.f, g+y2 + 22.f},
+                                 EHP, ESP);
             L.enemies.pushBack(e);
 
             auto star = Star::create();
@@ -1597,19 +1704,24 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             root->addChild(star, 6);
         } break;
 
+        // ===== Segment 2 — Spiker, nhảy chéo
         case 1: {
             float x1 = baseX + vs.width*0.24f, y1 =  90.f;
             float x2 = std::min(x1 + GAP_X, baseX + vs.width*0.54f), y2 = y1 + JUMP_DY;
             platform(x1, y1, P_W-10.f);
             platform(x2, y2, P_W);
 
+            // cột đôi
+            makeSolid(root, Rect(baseX+vs.width*0.68f, g, 18, 76), Color4F(0.25f,0.8f,0.25f,1));
+            makeSolid(root, Rect(baseX+vs.width*0.73f, g, 18, 60), Color4F(0.25f,0.8f,0.25f,1));
+
             coinLine(root, {baseX + 160, g+180}, 4, 36.f);
             placeUpgrade(root, UT, {x1 + P_W*0.5f, g+y1 + 26.f});
             placeChest(root, {baseX + vs.width*0.82f, g+36});
 
-            auto e = spawnEnemy(root, {x2 + P_W*0.5f, g+y2 + 22.f},
-                                {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
-                                EHP, ESP);
+            auto e = spawnSpiker(root, {x2 + P_W*0.5f, g+y2 + 22.f},
+                                 {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
+                                 EHP, ESP);
             L.enemies.pushBack(e);
 
             auto star = Star::create();
@@ -1617,6 +1729,7 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             root->addChild(star, 6);
         } break;
 
+        // ===== Segment 3 — Mix: goomba + spiker, platform rộng
         case 2: {
             float x1 = baseX + vs.width*0.18f, y1 =  90.f;
             float x2 = std::min(x1 + GAP_X, baseX + vs.width*0.48f), y2 = y1 + JUMP_DY;
@@ -1627,12 +1740,12 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             placeUpgrade(root, UT, {x1 + P_W*0.3f, g+y1 + 24.f});
             placeChest(root, {baseX + vs.width*0.80f, g+36});
 
-            auto e1 = spawnEnemy(root, {x1 + P_W*0.3f, g+y1 + 20.f},
-                                 {x1-60.f, g+y1 + 20.f}, {x1+60.f, g+y1 + 20.f},
-                                 EHP, ESP-10.f);
-            auto e2 = spawnEnemy(root, {x2 + P_W*0.4f, g+y2 + 22.f},
-                                 {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
-                                 EHP+1, ESP);
+            auto e1 = spawnGoomba(root, {x1 + P_W*0.3f, g+y1 + 20.f},
+                                  {x1-60.f, g+y1 + 20.f}, {x1+60.f, g+y1 + 20.f},
+                                  EHP, ESP-10.f);
+            auto e2 = spawnSpiker(root, {x2 + P_W*0.4f, g+y2 + 22.f},
+                                  {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
+                                  EHP+1, ESP);
             L.enemies.pushBack(e1); L.enemies.pushBack(e2);
 
             auto star = Star::create();
@@ -1640,19 +1753,24 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             root->addChild(star, 6);
         } break;
 
+        // ===== Segment 4 — Spiker nhanh, trụ cao dạng “cánh cổng”
         case 3: {
             float x1 = baseX + vs.width*0.30f, y1 = 120.f;
             float x2 = std::min(x1 + GAP_X, baseX + vs.width*0.64f), y2 = y1 + JUMP_DY;
             platform(x1, y1, P_W);
             platform(x2, y2, P_W-20.f);
 
+            // cổng
+            makeSolid(root, Rect(baseX+vs.width*0.20f, g, 22, 96), Color4F(0.25f,0.8f,0.25f,1));
+            makeSolid(root, Rect(baseX+vs.width*0.86f, g, 22, 96), Color4F(0.25f,0.8f,0.25f,1));
+
             coinLine(root, {baseX + 120, g+210}, 6, 30.f);
             placeUpgrade(root, UT, {x1 + P_W*0.4f, g+y1 + 26.f});
             placeChest(root, {baseX + vs.width*0.84f, g+36});
 
-            auto e = spawnEnemy(root, {x1 + P_W*0.4f, g+y1 + 22.f},
-                                {x1-90.f, g+y1 + 22.f}, {x1+90.f, g+y1 + 22.f},
-                                EHP+2, ESP+5.f);
+            auto e = spawnSpiker(root, {x1 + P_W*0.4f, g+y1 + 22.f},
+                                 {x1-90.f, g+y1 + 22.f}, {x1+90.f, g+y1 + 22.f},
+                                 EHP+2, ESP+8.f);
             L.enemies.pushBack(e);
 
             auto star = Star::create();
@@ -1660,39 +1778,29 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             root->addChild(star, 6);
         } break;
 
+        // ===== Segment 5 — BOSS (không đặt Star tĩnh; Star rơi từ boss)
         default: {
-            float x1 = baseX + vs.width*0.20f, y1 = 110.f;
+            float x1 = baseX + vs.width*0.22f, y1 = 110.f;
             float x2 = std::min(x1 + GAP_X, baseX + vs.width*0.48f), y2 = y1 + JUMP_DY;
             float x3 = std::min(x2 + GAP_X, baseX + vs.width*0.74f), y3 = y2 + JUMP_DY;
-            float x4 = std::min(x3 + GAP_X*0.65f, baseX + vs.width*0.86f), y4 = y3 + JUMP_DY;
-
             platform(x1, y1, P_W-10.f);
             platform(x2, y2, P_W+10.f);
             platform(x3, y3, P_W-20.f);
-            platform(x4, y4, P_W-60.f);
 
             coinLine(root, {baseX + 140, g+150}, 6, 34.f);
             placeUpgrade(root, UT, {x1 + P_W*0.4f, g+y1 + 26.f});
             placeChest(root, {baseX + vs.width*0.60f, g+36});
 
-            auto e1 = spawnEnemy(root, {x2 + P_W*0.5f, g+y2 + 22.f},
-                                 {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
-                                 EHP+3, ESP+10.f);
-            L.enemies.pushBack(e1);
-
-            // KHÔNG tạo Star ở mini cuối.
-            // Thay vào đó: spawn Boss — chết sẽ rơi Star.
             auto boss = BossGolem::create();
-            if (boss) {
-                boss->enablePhysics({x3 + 40.f, g + y3 + 22.f}, Size(72,72));
-                boss->setPatrol({x2 - 60.f, g + y2 + 22.f}, {x3 + 60.f, g + y3 + 22.f});
-                root->addChild(boss, 5);
-                L.enemies.pushBack(boss);
-            }
+            boss->enablePhysics({baseX + vs.width*0.68f, g + 40.f}, Size(72,72));
+            // Mặc định boss “ngủ”, GameScene sẽ bật aggro ở khúc cuối
+            boss->setAggroEnabled(false);
+            root->addChild(boss, 4);
+            L.enemies.pushBack(boss);
+            // KHÔNG tạo Star tĩnh ở segment boss
         } break;
         }
     }
-
     return L;
 }
 
@@ -1727,20 +1835,26 @@ File Chest.cpp
 #include "game/objects/Chest.h"
 #include "game/objects/Coin.h"
 #include "game/objects/Upgrade.h"
+
 #include "physics/PhysicsDefs.h"
+#include "physics/CCPhysicsBody.h"
+
+#include "2d/CCDrawNode.h"
 #include "base/ccRandom.h"
+
 USING_NS_CC;
 
-bool Chest::init(){
+bool Chest::init() {
     if (!Entity::init()) return false;
 
-    // simple box
+    // Hộp đơn giản (debug visual)
     auto dn = DrawNode::create();
-    dn->drawSolidRect(Vec2(-14,-10), Vec2(14,10), Color4F(0.6f,0.35f,0.1f,1));
-    dn->drawRect(Vec2(-14,-10), Vec2(14,10), Color4F::WHITE);
+    dn->drawSolidRect(Vec2(-14, -10), Vec2(14, 10), Color4F(0.6f, 0.35f, 0.1f, 1));
+    dn->drawRect(Vec2(-14, -10), Vec2(14, 10), Color4F::WHITE);
     addChild(dn);
 
-    auto body = PhysicsBody::createBox(Size(28,20));
+    // Vật lý: item-sensor, chỉ cần contact với Player
+    auto body = PhysicsBody::createBox(Size(28, 20));
     body->setDynamic(false);
     body->setCategoryBitmask((int)phys::CAT_ITEM);
     body->setCollisionBitmask(0);
@@ -1750,28 +1864,37 @@ bool Chest::init(){
     return true;
 }
 
-void Chest::open(){
+void Chest::open() {
     if (_opened) return;
     _opened = true;
 
-    // rớt 3-5 coin
-    int nCoin = RandomHelper::random_int(3,5);
-    for (int i=0;i<nCoin;++i){
-        auto c = Coin::create();
-        c->setPosition(getPosition() + Vec2(RandomHelper::random_real(-12.f,12.f), 6.f));
-        if (auto p = getParent()) p->addChild(c, 5);
+    auto* parent = getParent();
+    if (!parent) { removeFromParent(); return; }
+
+    // Rơi 3–5 coin rải xung quanh
+    int nCoin = RandomHelper::random_int(3, 5);
+    for (int i = 0; i < nCoin; ++i) {
+        if (auto* c = Coin::create()) {
+            c->setPosition(getPosition() + Vec2(
+                RandomHelper::random_real(-12.f, 12.f),
+                RandomHelper::random_real(6.f, 16.f)
+            ));
+            parent->addChild(c, 5);
+        }
     }
 
-    // 1 upgrade random
-    auto u = Upgrade::createRandom();
-    if (u) {
+    // 1 Upgrade (hoặc bạn chỉnh tỉ lệ nếu muốn)
+    if (auto* u = Upgrade::createRandom()) {
         u->setPosition(getPosition() + Vec2(0, 18));
-        if (auto p = getParent()) p->addChild(u, 5);
+        parent->addChild(u, 5);
     }
 
-    runAction(Sequence::create(FadeOut::create(0.05f),
-                               CallFunc::create([this]{ removeFromParent(); }),
-                               nullptr));
+    // KHÔNG spawn Star ở đây
+    runAction(Sequence::create(
+        FadeOut::create(0.05f),
+        CallFunc::create([this] { removeFromParent(); }),
+        nullptr
+    ));
 }
 
 File Chest.h
@@ -2210,9 +2333,11 @@ public:
 Folder Classes/game/weapon
 File Bullet.cpp
 #include "game/weapon/Bullet.h"
+#include "physics/PhysicsDefs.h"          // <-- cần để dùng phys::CAT_*, MASK_*, Tag
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
 #include "2d/CCDrawNode.h"
+#include <algorithm>                       // <-- std::max
 
 using namespace cocos2d;
 
@@ -2221,8 +2346,9 @@ Bullet* Bullet::create(const Vec2& origin, const Vec2& velocity, float lifeSec) 
     if (p && p->init()) {
         p->autorelease();
 
-        // Tag gameplay
+        // Tag gameplay + name cho dễ debug / lọc va chạm
         p->setTagEx(phys::Tag::BULLET);
+        p->setName("player_proj");
 
         // Vị trí ban đầu
         p->setPosition(origin);
@@ -2238,7 +2364,7 @@ Bullet* Bullet::create(const Vec2& origin, const Vec2& velocity, float lifeSec) 
         body->setGravityEnable(false);
         body->setRotationEnable(false);
 
-        // Masks theo PhysicsDefs.h (C++14-safe)
+        // Masks: để đạn người chơi có thể "đụng" ENEMY + ENEMY_PROJ (đã có trong MASK_BULLET)
         body->setCategoryBitmask(static_cast<int>(phys::CAT_BULLET));
         body->setCollisionBitmask(static_cast<int>(phys::MASK_BULLET));
         body->setContactTestBitmask(static_cast<int>(phys::MASK_BULLET));
@@ -2285,6 +2411,7 @@ protected:
 
 File Slash.cpp
 #include "game/weapon/Slash.h"
+#include "physics/PhysicsDefs.h"          // <-- CAT_SENSOR, MASK_SENSOR, ShapeTag::SLASH
 #include "physics/CCPhysicsBody.h"
 #include "physics/CCPhysicsShape.h"
 #include "2d/CCDrawNode.h"
@@ -2298,11 +2425,13 @@ Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, floa
     if (p && p->init()) {
         p->autorelease();
 
-        // Tag gameplay mở rộng
+        // Tag gameplay + name để phân biệt trong onContact
         p->setTagEx(phys::Tag::SLASH);
+        p->setName("player_slash");
+
         p->setPosition(origin);
 
-        // Vẽ nhát chém đơn giản để debug (dạng tam giác)
+        // (Optional) Visual debug — giữ nguyên tắt đi để gọn
         // auto dn = DrawNode::create();
         float r  = std::max(8.0f, sizeOrRange);
 
@@ -2310,18 +2439,17 @@ Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, floa
         Vec2 p0 = Vec2::ZERO;
         Vec2 p1 = a * r;
         Vec2 p2 = a.rotateByAngle(Vec2::ZERO, 0.35f) * (r * 0.75f);
-
         Vec2 tri[3] = { p0, p1, p2 };
         // dn->drawSolidPoly(tri, 3, Color4F(1.f, 1.f, 0.4f, 0.35f));
         // p->addChild(dn);
 
         // Body sensor hình hộp mỏng, đặt lệch về hướng tấn công
         auto body = PhysicsBody::create();
-        body->setDynamic(false);          // sensor tạm thời
+        body->setDynamic(false);
         body->setGravityEnable(false);
         body->setRotationEnable(false);
 
-        // Hộp mỏng theo hướng chém (tạo shape với OFFSET ngay từ factory)
+        // Hộp mỏng theo hướng chém (offset theo vector a)
         const float boxW = r * 0.9f;
         const float boxH = std::max(10.0f, r * 0.35f);
         Vec2 offset = a * (r * 0.45f);
@@ -2329,9 +2457,9 @@ Slash* Slash::create(const Vec2& origin, float angleRad, float sizeOrRange, floa
         auto shape = PhysicsShapeBox::create(Size(boxW, boxH), PhysicsMaterial(0,0,0), offset);
         shape->setSensor(true);
         shape->setTag(static_cast<int>(phys::ShapeTag::SLASH));
-        body->addShape(shape); // cocos2d-x 3.x: addShape chỉ nhận 1 tham số
+        body->addShape(shape);
 
-        // Masks: sensor chỉ cần contact, không collide cứng
+        // Masks: sensor chỉ cần contact (MASK_SENSOR = CAT_ALL) để bắt ENEMY và ENEMY_PROJ
         body->setCategoryBitmask(static_cast<int>(phys::CAT_SENSOR));
         body->setCollisionBitmask(0);
         body->setContactTestBitmask(static_cast<int>(phys::MASK_SENSOR));
@@ -2372,7 +2500,6 @@ public:
 
 Folder Classes/physics
 File PhysicsDefs.h
-// Classes/physics/PhysicsDefs.h
 #pragma once
 #include <cstdint>
 #include <initializer_list>
@@ -2386,17 +2513,21 @@ namespace phys {
 using Mask = std::uint32_t;
 
 enum : Mask {
-    CAT_NONE   = 0u,
-    CAT_WORLD  = 1u << 0,  // ground/map/platform
-    CAT_PLAYER = 1u << 1,
-    CAT_ENEMY  = 1u << 2,
-    CAT_ITEM   = 1u << 3,  // coin/star/upgrade…
-    CAT_BULLET = 1u << 4,  // projectile
-    CAT_SENSOR = 1u << 5,  // generic sensors
-    CAT_CRATE  = 1u << 6,
-    CAT_GATE   = 1u << 7,
-    CAT_SOLID  = 1u << 8,  // tường/vật thể rắn khác
-    CAT_ALL    = 0xFFFFFFFFu
+    CAT_NONE       = 0u,
+    CAT_WORLD      = 1u << 0,  // ground/map/platform
+    CAT_PLAYER     = 1u << 1,
+    CAT_ENEMY      = 1u << 2,
+    CAT_ITEM       = 1u << 3,  // coin/star/upgrade…
+    CAT_BULLET     = 1u << 4,  // projectile của người chơi
+    CAT_SENSOR     = 1u << 5,  // generic sensors
+    CAT_CRATE      = 1u << 6,
+    CAT_GATE       = 1u << 7,
+    CAT_SOLID      = 1u << 8,  // tường/vật thể rắn khác
+
+    // TÁCH BIT RIÊNG cho đạn/aoe của kẻ địch (không đè CRATE)
+    CAT_ENEMY_PROJ = 1u << 9,
+
+    CAT_ALL        = 0xFFFFFFFFu
 };
 
 // ==============================
@@ -2425,20 +2556,21 @@ enum class ShapeTag : int {
     SLASH = 2   // hitbox chém
 };
 
-// Alias số nguyên để code cũ từng dùng phys::FOOT/SLASH vẫn chạy (C++14-safe).
+// Alias số nguyên để code cũ gọi phys::FOOT/SLASH vẫn chạy
 constexpr int FOOT  = static_cast<int>(ShapeTag::FOOT);
 constexpr int SLASH = static_cast<int>(ShapeTag::SLASH);
 
 // ==============================
 // Masks giữ lại cho back-compat
 // ==============================
-constexpr Mask MASK_BULLET = (CAT_WORLD | CAT_ENEMY | CAT_GATE | CAT_CRATE);
+// CHÚ Ý: Bullet của player sẽ contact với ENEMY_PROJ để bắn nổ đạn quái
+constexpr Mask MASK_BULLET = (CAT_WORLD | CAT_ENEMY | CAT_ENEMY_PROJ | CAT_GATE | CAT_CRATE);
 constexpr Mask MASK_SENSOR = CAT_ALL;
 
 // ==============================
 // Helpers cho mask
 // ==============================
-inline Mask all() { return CAT_ALL; }  // all() = mọi bit
+inline Mask all() { return CAT_ALL; }
 
 // all({ A, B, C }) — C++14, không dùng fold-expression
 inline Mask all(std::initializer_list<Mask> xs) {
@@ -2475,7 +2607,6 @@ inline float yOnTop(float topY, float bodyH, float skin = 0.5f) {
     return topY + bodyH * 0.5f + skin;
 }
 
-
 } // namespace phys
 
 // ------------------------------------------------------------
@@ -2492,8 +2623,7 @@ File GameScene.cpp
 #include "game/map/LevelBuilder.h"
 
 #include "game/Enemy.h"
-
-
+#include "game/bosses/BossGolem.h"
 #include "game/weapon/Bullet.h"
 #include "game/weapon/Slash.h"
 #include "game/objects/Coin.h"
@@ -2501,18 +2631,28 @@ File GameScene.cpp
 #include "game/objects/Upgrade.h"
 #include "game/objects/Chest.h"
 
+#include "physics/CCPhysicsShape.h"
 #include "2d/CCDrawNode.h"
-
 #include "physics/PhysicsDefs.h"
 #include <algorithm>
+#include <vector>
 
 USING_NS_CC;
 
-// helper: check category
-static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
-    return n && n->getPhysicsBody() &&
-           ((phys::Mask)n->getPhysicsBody()->getCategoryBitmask() & catMask) != 0u;
+// ---------------------------
+// Helpers file-scope
+// ---------------------------
+static inline bool isSlashShape(cocos2d::PhysicsShape* s) {
+    return s && s->getTag() == (int)phys::ShapeTag::SLASH;
 }
+
+static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
+    if (!n) return false;
+    auto* body = n->getPhysicsBody();
+    return body && ((static_cast<phys::Mask>(body->getCategoryBitmask()) & catMask) != 0u);
+}
+
+// ======================================================================
 
 Scene* GameScene::createScene() {
     auto scene = Scene::createWithPhysics();
@@ -2531,7 +2671,7 @@ bool GameScene::init() {
     buildUICamera();
     buildHUD();
 
-    // Map 5 đoạn
+    // build map 5 mini
     auto L = levels::buildLevel1(this, _vs, _origin);
     _groundTop    = L.groundTop;
     _segmentCount = L.segments;
@@ -2546,54 +2686,59 @@ bool GameScene::init() {
     addChild(_player, 5);
     _player->enablePhysics({ L.playerSpawn.x, _groundTop + 220.f });
 
-
-    // GÁN TARGET CHO TẤT CẢ ENEMY (kể cả Boss)
+    // GÁN TARGET + cấu hình aggro (boss mặc định ngủ)
     for (auto* e : L.enemies) {
         _enemies.pushBack(e);
-        e->setTarget(_player);   // <<< dòng cần thêm
+        e->setTarget(_player);
+        e->setAggroEnabled(true);
+        e->setAggroRange(220.f);
+        e->setChaseSpeed(130.f);
+        if (auto boss = dynamic_cast<BossGolem*>(e)) {
+            boss->setAggroEnabled(false);    // chỉ bật ở mini cuối
+            boss->setAggroRange(320.f);
+            boss->setChaseSpeed(110.f);
+        }
     }
 
-
     // HUD
-    _lives = 3; _score = 0; _starsHave = 0; _starsNeed = _segmentCount;
+    _lives = 3; _score = 0; _starsHave = 0;
+    _starsNeed = _segmentCount;      // 1 sao / mini
     if (_hud) {
         _hud->setZone(1, _segmentCount);
         _hud->setLives(_lives);
         _hud->setScore(_score);
         _hud->setStars(_starsHave, _starsNeed);
-        _hud->setHP(_player->hp(), _player->maxHp());   // <---
+        _hud->setHP(_player->hp(), _player->maxHp());
     }
 
-
     // --- Sao theo mini + barrier + portal ---
-    _starsNeed = _segmentCount;                  // cần 1 sao/mini => tổng 5
     _starsSeg.assign(_segmentCount, 0);
 
-    // Tạo barrier khóa giữa mini i và i+1 (i = 0..3)
+    // Barrier khoá giữa các mini
     for (int i=0; i<_segmentCount-1; ++i) {
-        float x = _origin.x + (i+1)*_segmentWidth - 3.f; // vách ngăn “mỏng”
+        float x = _origin.x + (i+1)*_segmentWidth - 3.f;
         auto n = Node::create();
         auto body = PhysicsBody::createBox(Size(6, _vs.height));
         body->setDynamic(false);
         body->setCategoryBitmask((int)phys::CAT_GATE);
-        body->setCollisionBitmask((int)phys::CAT_PLAYER);      // chặn Player
-        body->setContactTestBitmask((int)phys::CAT_PLAYER);
+        body->setCollisionBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));   // thay dòng cũ chỉ có PLAYER
+        body->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY)); // thay dòng cũ chỉ có PLAYER
+
         n->addComponent(body);
         n->setPosition({x, _groundTop + _vs.height*0.5f});
         addChild(n, 2);
         _locks.push_back(n);
     }
 
-    // Portal cuối (visual thôi, check khoảng cách khi đủ sao)
+    // Portal cuối (visual)
     auto dn = DrawNode::create();
     dn->drawSolidCircle(Vec2::ZERO, 24, 0, 28, Color4F(0.7f,0.9f,1.f,0.85f));
     _endPortal = dn;
-    // đặt ở mép phải mini 5, hơi nổi lên khỏi ground
     _endPortal->setPosition(_origin + Vec2(_segmentCount*_segmentWidth - 64.f, _groundTop + 64.f));
     addChild(_endPortal, 3);
 
-
     _bindInput();
+
     auto cl = EventListenerPhysicsContact::create();
     cl->onContactBegin    = CC_CALLBACK_1(GameScene::_onContactBegin, this);
     cl->onContactSeparate = CC_CALLBACK_1(GameScene::_onContactSeparate, this);
@@ -2613,20 +2758,25 @@ void GameScene::onEnter() {
 
 void GameScene::onExit() { Layer::onExit(); }
 
+// ======================================================================
 // UI
+// ======================================================================
 void GameScene::buildUICamera() {
     _uiCam = Camera::createOrthographic(_vs.width, _vs.height, 1.0f, 1024.0f);
     _uiCam->setCameraFlag(CameraFlag::USER1);
     _uiCam->setPosition(_origin + Vec2(_vs.width*0.5f, _vs.height*0.5f));
     addChild(_uiCam, 999);
 }
+
 void GameScene::buildHUD() {
     _hud = HUDLayer::create();
     _hud->setCameraMask((unsigned short)CameraFlag::USER1);
     addChild(_hud, 100);
 }
 
+// ======================================================================
 // Input
+// ======================================================================
 void GameScene::_bindInput() {
     auto l = EventListenerKeyboard::create();
     l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*) {
@@ -2659,9 +2809,9 @@ void GameScene::_bindInput() {
     _kb = l;
 }
 
-
-
+// ======================================================================
 // Contact
+// ======================================================================
 bool GameScene::_onContactBegin(PhysicsContact& c) {
     auto A = c.getShapeA(); auto B = c.getShapeB();
     auto a = A->getBody()->getNode(); auto b = B->getBody()->getNode();
@@ -2679,18 +2829,15 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
     else if (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ITEM)) item=a;
 
     if (item) {
-        // Mini của vật phẩm theo X (0.._segmentCount-1)
         int segByItem = (int)((item->getPositionX() - _origin.x) / _segmentWidth);
-        if (segByItem < 0) segByItem = 0;
-        if (segByItem >= _segmentCount) segByItem = _segmentCount-1;
+        segByItem = std::max(0, std::min(segByItem, _segmentCount-1));
 
         if (auto star = dynamic_cast<Star*>(item)) {
-            // Ghi nhận sao
             _starsSeg[segByItem] += 1;
             _setStars(_starsHave+1, _starsNeed);
             _addScore(50);
 
-            // Mở barrier của mini này (nếu chưa phải mini cuối)
+            // mở barrier của mini này (nếu chưa là mini cuối)
             if (segByItem < _segmentCount-1 && segByItem >= 0 && segByItem < (int)_locks.size()) {
                 if (_locks[segByItem]) {
                     _locks[segByItem]->removeFromParent();
@@ -2713,16 +2860,14 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         if (auto up = dynamic_cast<Upgrade*>(item)) {
             using T = Upgrade::Type;
             const auto t = up->type();
-
             _addScore(25);
+
             if (_player) {
                 if (t == T::EXTRA_LIFE) {
-                    _setLives(_lives + 1); // +1 mạng ngay
+                    _setLives(_lives + 1);
                     if (_hud) _hud->addBuff("Extra Life +1", 3.f);
                 } else {
-                    // Giao kèo: Player có applyUpgrade(int type, float duration)
                     _player->applyUpgrade((int)t, up->duration());
-
                     if (_hud) {
                         std::string n;
                         switch (t) {
@@ -2743,41 +2888,81 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto chest = dynamic_cast<Chest*>(item)) {
-            chest->open();      // để nguyên logic chest
+            chest->open();
             return false;
         }
     }
 
+    // Player Bullet/Slash ↔ Enemy Projectile => phá cả hai
+    if ( ((hasCat(a, phys::CAT_BULLET) || isSlashShape(A)) && hasCat(b, phys::CAT_ENEMY_PROJ)) ||
+         ((hasCat(b, phys::CAT_BULLET) || isSlashShape(B)) && hasCat(a, phys::CAT_ENEMY_PROJ)) ) {
 
+        if (hasCat(a, phys::CAT_ENEMY_PROJ)) a->removeFromParent();
+        if (hasCat(b, phys::CAT_ENEMY_PROJ)) b->removeFromParent();
+        if (hasCat(a, phys::CAT_BULLET))     a->removeFromParent();
+        if (hasCat(b, phys::CAT_BULLET))     b->removeFromParent();
+        return false; // chặn phản ứng vật lý mặc định
+    }
 
-    // Bullet/Slash ↔ Enemy
-    auto isSlash = [&](PhysicsShape* s)->bool { return s && s->getTag()==(int)phys::ShapeTag::SLASH; };
-    Node* enemy=nullptr;
-    if ( (hasCat(a,phys::CAT_BULLET)||isSlash(A)) && hasCat(b,phys::CAT_ENEMY)) enemy=b;
-    else if ( (hasCat(b,phys::CAT_BULLET)||isSlash(B)) && hasCat(a,phys::CAT_ENEMY)) enemy=a;
+    // Player ↔ Enemy Projectile => player mất máu + xoá đạn quái
+    if ( (hasCat(a, phys::CAT_PLAYER) && hasCat(b, phys::CAT_ENEMY_PROJ)) ||
+         (hasCat(b, phys::CAT_PLAYER) && hasCat(a, phys::CAT_ENEMY_PROJ)) ) {
 
-    if (enemy) {
-        // ➜ GỘP DAMAGE TỪ BUFF PLAYER: base + atkBonus()
-        int base = (isSlash(A)||isSlash(B)) ? 2 : 1;
-        int dmg  = base + (_player ? _player->atkBonus() : 0);
-
-        if (auto e = dynamic_cast<Enemy*>(enemy)) e->takeHit(dmg);
-
-        if (hasCat(a,phys::CAT_BULLET)) a->removeFromParent();
-        if (hasCat(b,phys::CAT_BULLET)) b->removeFromParent();
-
-        _addScore(20);
+        if (_player && !_player->invincible()) {
+            _player->hurt(10);
+            if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
+            if (_player->isDead()) {
+                _setLives(_lives - 1);
+                if (_lives <= 0) {
+                    _gameOver = true; _showOverlay("YOU DIED\nPress [R] to restart");
+                } else {
+                    _player->restoreFullHP();
+                    if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
+                    if (auto body = _player->getPhysicsBody()) body->setVelocity(Vec2::ZERO);
+                    _player->setPosition(_origin + Vec2(_segment * _segmentWidth + _vs.width*0.15f, _groundTop + 40.f));
+                }
+            }
+        }
+        if (hasCat(a, phys::CAT_ENEMY_PROJ)) a->removeFromParent();
+        if (hasCat(b, phys::CAT_ENEMY_PROJ)) b->removeFromParent();
         return false;
     }
 
+    // Bullet/Slash ↔ Enemy
+    Node* enemyNode = nullptr;
+    if ((hasCat(a,phys::CAT_BULLET) || isSlashShape(A)) && hasCat(b,phys::CAT_ENEMY)) enemyNode = b;
+    else if ((hasCat(b,phys::CAT_BULLET) || isSlashShape(B)) && hasCat(a,phys::CAT_ENEMY)) enemyNode = a;
 
+    if (enemyNode) {
+        // Va chạm có thể rơi vào node con (hurtbox). Leo lên cha để tìm Enemy thật.
+        Node* cur = enemyNode;
+        Enemy* e = nullptr;
+        while (cur && !(e = dynamic_cast<Enemy*>(cur))) cur = cur->getParent();
 
-    // Enemy ↔ Player → TRỪ HP, chỉ trừ mạng khi HP hết
-    if ( (hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
-         (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ENEMY)) ) {
+        if (e) {
+            int base = (isSlashShape(A) || isSlashShape(B)) ? 2 : 1;
+            int dmg  = base + (_player ? _player->atkBonus() : 0);
+            e->takeHit(dmg);
+            _addScore(20);
+        }
+
+        // Dọn đạn của player
+        if (hasCat(a,phys::CAT_BULLET)) a->removeFromParent();
+        if (hasCat(b,phys::CAT_BULLET)) b->removeFromParent();
+
+        return false; // chặn phản ứng vật lý mặc định
+    }
+
+    // Enemy (thân) ↔ Player
+    if ((hasCat(a,phys::CAT_PLAYER) && hasCat(b,phys::CAT_ENEMY)) ||
+        (hasCat(b,phys::CAT_PLAYER) && hasCat(a,phys::CAT_ENEMY)) ) {
         if (_player && !_player->invincible()) {
-            _player->hurt(10);                                // trừ HP
+            _player->hurt(10);
             if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
+
+            // nếu node là projectile gắn tên "enemy_proj" thì dọn luôn
+            if (a && a->getName()=="enemy_proj") a->removeFromParent();
+            if (b && b->getName()=="enemy_proj") b->removeFromParent();
 
             if (_player->isDead()) {
                 _setLives(_lives-1);
@@ -2795,6 +2980,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         return true;
     }
 
+    // đảm bảo mọi đường đi đều return cho hàm bool
     return true;
 }
 
@@ -2807,23 +2993,25 @@ void GameScene::_onContactSeparate(PhysicsContact& c) {
     }
 }
 
+// ======================================================================
+// Update
+// ======================================================================
 void GameScene::update(float dt) {
     if (_gameOver || _gameWin || !_player) return;
 
-    // --- NEW: HUD đếm ngược buff mỗi frame ---
     if (_hud) _hud->tick(dt);
 
-    // --- Camera follow trong biên của đoạn hiện tại ---
-    auto* scene = this->getScene();
-    auto* cam   = scene ? scene->getDefaultCamera() : nullptr;
-    if (cam) {
-        float x      = _player->getPositionX();
-        float halfW  = _vs.width * 0.5f;
-        float target = cocos2d::clampf(x, _camL + halfW, _camR - halfW);
-        cam->setPositionX(target);
+    // Camera follow trong biên của đoạn hiện tại
+    if (auto* scene = this->getScene()) {
+        if (auto* cam = scene->getDefaultCamera()) {
+            float x      = _player->getPositionX();
+            float halfW  = _vs.width * 0.5f;
+            float target = cocos2d::clampf(x, _camL + halfW, _camR - halfW);
+            cam->setPositionX(target);
+        }
     }
 
-    // --- Sang đoạn kế (nếu đã tới mép phải đoạn) ---
+    // Sang đoạn kế
     if (_player->getPositionX() > _camR - 4.0f && _segment < _segmentCount - 1) {
         _segment++;
         _camL = _origin.x + _segment * _segmentWidth;
@@ -2831,7 +3019,14 @@ void GameScene::update(float dt) {
         if (_hud) _hud->setZone(_segment + 1, _segmentCount);
     }
 
-    // --- Rơi khỏi map → trừ mạng + hồi full HP + respawn ---
+    // Khi vào mini cuối => bật boss
+    if (!_bossAggroOn && _segment == _segmentCount - 1) {
+        for (auto* e : _enemies)
+            if (auto b = dynamic_cast<BossGolem*>(e)) b->setAggroEnabled(true);
+        _bossAggroOn = true;
+    }
+
+    // Rơi khỏi map => trừ mạng + respawn
     if (_player->getPositionY() < _groundTop - 200.f) {
         _setLives(_lives - 1);
         if (_lives <= 0) {
@@ -2840,11 +3035,8 @@ void GameScene::update(float dt) {
         } else {
             _player->restoreFullHP();
             if (_hud) _hud->setHP(_player->hp(), _player->maxHp());
-
             if (auto body = _player->getPhysicsBody())
-                body->setVelocity(Vec2::ZERO);   // NEW: reset vận tốc rơi
-
-            // respawn ở đầu đoạn hiện tại
+                body->setVelocity(Vec2::ZERO);
             _player->setPosition(_origin + Vec2(
                 _segment * _segmentWidth + _vs.width * 0.15f,
                 _groundTop + 40.f
@@ -2852,8 +3044,7 @@ void GameScene::update(float dt) {
         }
     }
 
-    // --- NEW: Đủ số sao → chạm gần portal cuối để Win ---
-    // Yêu cầu: _endPortal đã được tạo trong init() như mình hướng dẫn
+    // Đủ sao → đến gần portal để Win
     if (!_gameWin && _starsHave >= _starsNeed && _endPortal && _player) {
         float dist = _player->getPosition().distance(_endPortal->getPosition());
         if (dist < 36.f) {
@@ -2863,8 +3054,9 @@ void GameScene::update(float dt) {
     }
 }
 
-
+// ======================================================================
 // HUD helpers
+// ======================================================================
 void GameScene::_setLives(int v){ _lives = std::max(0, v); if (_hud) _hud->setLives(_lives); }
 void GameScene::_addScore(int v){ _score += v; if (_hud) _hud->setScore(_score); }
 void GameScene::_setStars(int have, int need){ _starsHave = have; _starsNeed = need; if (_hud) _hud->setStars(_starsHave, _starsNeed); }
@@ -2911,17 +3103,21 @@ public:
     void setPhysicsWorld(cocos2d::PhysicsWorld* w) { _world = w; }
 
 private:
+    // world / view
     cocos2d::PhysicsWorld* _world = nullptr;
     cocos2d::Size _vs{};
     cocos2d::Vec2 _origin{};
 
+    // UI
     cocos2d::Camera* _uiCam = nullptr;
     HUDLayer*        _hud   = nullptr;
     cocos2d::Label*  _overlay = nullptr;
 
+    // actors
     Player* _player = nullptr;
     cocos2d::Vector<Enemy*> _enemies;
 
+    // level state
     float _groundTop = 0.f;
     int   _segment = 0, _segmentCount = 1;
     float _segmentWidth = 0.f;
@@ -2929,19 +3125,19 @@ private:
 
     int  _score=0, _lives=3, _starsHave=0, _starsNeed=5;
     bool _gameOver=false, _gameWin=false;
+    bool _bossAggroOn=false; // chỉ bật khi vào mini cuối
 
+    // listeners
     cocos2d::EventListenerKeyboard*       _kb      = nullptr;
     cocos2d::EventListenerPhysicsContact* _contact = nullptr;
 
-    // UI
+    // UI helpers
     void buildUICamera();
     void buildHUD();
     void _showOverlay(const std::string& text);
 
     // input
     void _bindInput();
-    void _doShoot();
-    void _doSlash();
 
     // contact
     bool _onContactBegin(cocos2d::PhysicsContact& c);
@@ -2955,12 +3151,10 @@ private:
     void _restartLevel();
     void _returnMenu();
 
-    // Sao theo từng mini + barrier + portal cuối
-    std::vector<int> _starsSeg;                 // sao đã nhặt ở mỗi mini (size = _segmentCount)
-    std::vector<cocos2d::Node*> _locks;         // barrier khóa giữa các mini
-    cocos2d::Node* _endPortal = nullptr;        // portal cuối (visual)
-
-
+    // stars by segment + gates + end portal
+    std::vector<int> _starsSeg;
+    std::vector<cocos2d::Node*> _locks;
+    cocos2d::Node* _endPortal = nullptr;
 };
 
 File MenuScene.cpp

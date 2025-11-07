@@ -1,17 +1,60 @@
+// Classes/game/Player.cpp  — phiên bản có SFX bắn/chém + jump/land/hurt (fallback đuôi)
 #include "game/Player.h"
+
 #include "2d/CCDrawNode.h"
-#include "physics/CCPhysicsBody.h"
-#include "physics/CCPhysicsShape.h"
-#include <algorithm>
-#include <cmath>
 #include "2d/CCSprite.h"
 #include "2d/CCAnimation.h"
 #include "2d/CCAnimationCache.h"
+
+#include "physics/CCPhysicsBody.h"
+#include "physics/CCPhysicsShape.h"
+
 #include "GameScene.h"
 #include "game/weapon/Bullet.h"
 #include "game/weapon/Slash.h"
 
+// Âm thanh
+#include "audio/Sound.h"                        // dùng snd::sfxShoot(), snd::sfxSlash()
+#include "audio/include/AudioEngine.h"          // fallback SFX cho jump/land/hurt
+#include "platform/CCFileUtils.h"
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+
 using namespace cocos2d;
+
+// ==============================
+// SFX helpers (fallback by stem)
+// ==============================
+namespace {
+    using AE = cocos2d::AudioEngine;
+
+    // Cho phép chỉ truyền "gốc tên" (stem), tự tìm .wav/.mp3/.ogg nếu tồn tại
+    inline std::string _pickAudio(const char* stem) {
+        static const char* exts[] = { ".wav", ".mp3", ".ogg" };
+        auto* fu = FileUtils::getInstance();
+        for (auto* ext : exts) {
+            std::string p = std::string(stem) + ext;
+            if (fu->isFileExist(p)) return p;
+        }
+        CCLOG("SND missing: %s.(wav|mp3|ogg) not found", stem);
+        return {};
+    }
+
+    inline void _sfxOptional(const char* stem, float vol = 0.9f) {
+        if (!stem) return;
+        std::string f = _pickAudio(stem);
+        if (!f.empty()) AE::play2d(f, false, vol);
+    }
+
+    // Tên gốc (stem) cho các SFX thêm mới:
+    constexpr const char* SFX_JUMP = "audio/sfx_jump";
+    constexpr const char* SFX_LAND = "audio/sfx_land";
+    constexpr const char* SFX_HURT = "audio/sfx_hurt";
+}
+
+// ==============================
 
 static inline float approach(float cur, float target, float delta) {
     if (cur < target) return std::min(target, cur + delta);
@@ -34,7 +77,7 @@ bool Player::init() {
 }
 
 void Player::refreshVisual() {
-    // debug draw collider nếu cần
+    // (tùy chọn) debug collider
 }
 
 void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
@@ -44,8 +87,7 @@ void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
     _body = buildOrUpdateBody(_colSize);
     applyPlayerMasks();
 
-    // LƯU Ý: Cocos2d-x dùng setEnabled (đúng chính tả)
-    _body->setEnabled(true);
+    _body->setEnabled(true);          // đúng chính tả cocos2d-x
     _body->setGravityEnable(true);
     _body->setDynamic(true);
     _body->setVelocity(Vec2::ZERO);
@@ -66,12 +108,14 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
         for (auto s : shapes) _body->removeShape(s);
     }
 
+    // main box (trọng tâm nằm giữa thân)
     auto mainBox = PhysicsShapeBox::create(
         sz, PhysicsMaterial(0.1f, 0.0f, 0.5f),
         Vec2(0, +sz.height * 0.5f)
     );
     _body->addShape(mainBox);
 
+    // chân (sensor) — để đếm tiếp đất
     const float footH = std::max(4.0f, sz.height * 0.08f);
     const Size  footSize(sz.width * 0.60f, footH);
     const Vec2  footOffset(0, -footH * 0.5f);
@@ -88,12 +132,12 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
 void Player::applyPlayerMasks() {
     if (!_body) return;
 
-    // va chạm cứng: như cũ
+    // va chạm cứng
     const phys::Mask collide =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
         phys::CAT_GATE  | phys::CAT_CRATE;
 
-    // LIÊN HỆ (contact) — THÊM CAT_ENEMY_PROJ  ⬇⬇⬇
+    // contact (thêm ENEMY_PROJ để ăn đạn địch)
     const phys::Mask contact =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ENEMY_PROJ |
         phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
@@ -114,19 +158,24 @@ void Player::jump() {
 
     if (_footContacts > 0) {
         _body->applyImpulse(Vec2(0, impulse));
+        _sfxOptional(SFX_JUMP);       // 🔊 nhảy từ đất
         return;
     }
     if (_airJumpsMax > 0 && _airJumpsUsed < _airJumpsMax) {
         _airJumpsUsed++;
         _body->setVelocity(Vec2(_body->getVelocity().x, 0));
         _body->applyImpulse(Vec2(0, impulse * 0.92f));
+        _sfxOptional(SFX_JUMP);       // 🔊 nhảy trên không
     }
 }
 
 void Player::incFoot(int delta) {
-    int prev = _footContacts;
+    const int prev = _footContacts;
     _footContacts = std::max(0, _footContacts + delta);
-    if (prev==0 && _footContacts>0) _airJumpsUsed = 0; // chạm đất -> reset
+    if (prev==0 && _footContacts>0) {
+        _airJumpsUsed = 0;            // chạm đất -> reset
+        _sfxOptional(SFX_LAND);       // 🔊 chạm đất
+    }
 }
 
 void Player::heal(int v) { _hp = std::min(_maxHp, _hp + std::max(0, v)); }
@@ -136,6 +185,7 @@ void Player::hurt(int dmg) {
     if (invincible() || !_body) return;
     _hp = std::max(0, _hp - std::max(1, dmg));
     _invincibleT = 0.8f;
+    _sfxOptional(SFX_HURT);           // 🔊 bị thương
 
     const float dir = (_facing > 0 ? -1.f : +1.f);
     _body->applyImpulse(Vec2(200.f * dir, 260.f));
@@ -158,6 +208,7 @@ void Player::doShoot(){
                 auto b = Bullet::create(origin, vel, 1.5f);
                 if (getParent() && b) getParent()->addChild(b, 6);
             }
+            snd::sfxShoot();          // 🔊 bắn
         }),
         DelayTime::create(0.36f),
         CallFunc::create([this]() { _shooting = false; }),
@@ -177,6 +228,7 @@ void Player::doSlash(){
             float angle = (dir > 0) ? 0.0f : 3.14159265f;
             auto s = Slash::create(origin, angle, _slashRange, 0.12f);
             if (auto p=getParent()) p->addChild(s, 6);
+            snd::sfxSlash();          // 🔊 chém
         }),
         DelayTime::create(0.30f),
         CallFunc::create([this]{ _attacking = false; }),
@@ -223,7 +275,7 @@ void Player::playAnim(const std::string& animName, float delay, int frameCount) 
 void Player::update(float dt) {
     if (!_body) return;
 
-    // blink invuln
+    // invuln blink
     if (_invincibleT > 0.f) {
         _invincibleT -= dt;
         const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
@@ -253,15 +305,20 @@ void Player::update(float dt) {
     else nextAnim = "idle";
 
     if (_currentAnim != nextAnim){
-        if (nextAnim == "die")      playAnim("die",   0.12f, 6);
-        else if (nextAnim == "jump")playAnim("jump",  0.23f, 4);
-        else if (nextAnim == "run") playAnim("run",   0.06f, 8);
+        if (nextAnim == "die")         playAnim("die",    0.12f, 6);
+        else if (nextAnim == "jump")   playAnim("jump",   0.23f, 4);
+        else if (nextAnim == "run")    playAnim("run",    0.06f, 8);
         else if (nextAnim == "attack") playAnim("attack", 0.06f, 6);
         else if (nextAnim == "shoot")  playAnim("shoot",  0.08f, 6);
-        else playAnim("idle", 0.12f, 8);
+        else                           playAnim("idle",   0.12f, 8);
     }
 
-    if (_sprite) _sprite->setScaleX(_facing);
+    // lật sprite vẫn giữ scale gốc
+    if (_sprite) {
+        float sx = std::fabs(_sprite->getScaleX());
+        if (sx < 0.01f) sx = 1.4f; // nếu trước đó bị set về 0/1, lấy lại mặc định
+        _sprite->setScaleX(_facing * sx);
+    }
 
     // đếm buff & revert
     for (int i=(int)_buffs.size()-1; i>=0; --i){
