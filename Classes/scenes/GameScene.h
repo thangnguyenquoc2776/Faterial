@@ -3,7 +3,6 @@
 #include "game/Player.h"
 #include "game/Enemy.h"
 #include "game/map/LevelBuilder.h"
-#include "2d/CCParallaxNode.h"
 
 class HUDLayer;
 
@@ -20,40 +19,47 @@ public:
     void setPhysicsWorld(cocos2d::PhysicsWorld* w) { _world = w; }
 
 private:
-    // world / view
+    // ------------- scene roots -------------
+    cocos2d::Node*   _bgRoot    = nullptr; // parallax/bg (nếu có)
+    cocos2d::Node*   _worldRoot = nullptr; // platforms, items, enemies, gates...
+    cocos2d::Node*   _fxRoot    = nullptr; // text/hiệu ứng bám world
+    cocos2d::Node*   _uiRoot    = nullptr; // HUD/PAUSE... bám màn hình
+    cocos2d::Camera* _uiCam     = nullptr;
+
+    // physics
     cocos2d::PhysicsWorld* _world = nullptr;
+
+    // view
     cocos2d::Size _vs{};
     cocos2d::Vec2 _origin{};
 
     // UI
-    cocos2d::Camera* _uiCam = nullptr;
-    HUDLayer*        _hud   = nullptr;
-    cocos2d::Label*  _overlay = nullptr;
+    HUDLayer*       _hud      = nullptr;
+    cocos2d::Label* _overlay  = nullptr;   // overlay UI (screen-space)
 
     // actors
     Player* _player = nullptr;
+    cocos2d::Node* _playerAnchor = nullptr; // gắn nhãn bay theo player
     cocos2d::Vector<Enemy*> _enemies;
 
     // level state
     float _groundTop = 0.f;
     int   _segment = 0, _segmentCount = 1;
     float _segmentWidth = 0.f;
-    float _camL = 0.f, _camR = 0.f;
+    float _worldWidth   = 0.f; // bề rộng toàn bản đồ
 
     int  _score=0, _lives=3, _starsHave=0, _starsNeed=5;
     bool _gameOver=false, _gameWin=false;
-    bool _bossAggroOn=false; // chỉ bật khi vào mini cuối
+    bool _bossAggroOn=false;
 
     // listeners
     cocos2d::EventListenerKeyboard*       _kb      = nullptr;
     cocos2d::EventListenerPhysicsContact* _contact = nullptr;
 
-    // UI helpers
+    // ---------- build / helpers ----------
+    void _buildSceneRoots();
     void buildUICamera();
     void buildHUD();
-    void _showOverlay(const std::string& text);
-
-    // input
     void _bindInput();
 
     // contact
@@ -68,8 +74,17 @@ private:
     void _restartLevel();
     void _returnMenu();
 
-    // stars by segment + gates + end portal
-    std::vector<int> _starsSeg;
-    std::vector<cocos2d::Node*> _locks;
-    cocos2d::Node* _endPortal = nullptr;
+    // gate/portal
+    void _buildTallGates();
+    int  _miniIndexAt(float x) const;
+
+    // overlay
+    void _showScreenOverlay(const std::string& text);                   // dính màn hình
+    void _showWorldTextAt(const std::string& text, const cocos2d::Vec2& worldPos); // bám world
+    float _cameraCenterX() const;
+
+    // add helpers (set camera masks đúng flag)
+    void _addToWorld(cocos2d::Node* n, int z=0);
+    void _addToFX   (cocos2d::Node* n, int z=0);
+    void _addToUI   (cocos2d::Node* n, int z=0);
 };

@@ -3,10 +3,14 @@
 ├── CMakeLists.txt
 └── Classes
     ├── main.cpp
+    ├── audio
+    │   ├── Sound.cpp
+    │   └── Sound.h
     ├── core
     │   ├── AppDelegate.cpp
     │   ├── AppDelegate.h
-    │   └── CrashGuard.h
+    │   ├── CrashGuard.h
+    │   └── Settings.h
     ├── game
     │   ├── Enemy.cpp
     │   ├── Enemy.h
@@ -54,39 +58,50 @@
     ├── physics
     │   └── PhysicsDefs.h
     ├── scenes
+    │   ├── CreditsScene.cpp
+    │   ├── CreditsScene.h
+    │   ├── EndScene.cpp
+    │   ├── EndScene.h
     │   ├── GameScene.cpp
     │   ├── GameScene.h
     │   ├── MenuScene.cpp
-    │   └── MenuScene.h
+    │   ├── MenuScene.h
+    │   ├── SettingsScene.cpp
+    │   └── SettingsScene.h
     └── ui
         ├── HUDLayer.cpp
-        └── HUDLayer.h
+        ├── HUDLayer.h
+        ├── PauseLayer.cpp
+        └── PauseLayer.h
 
 ===== FILE MANIFEST =====
-- CMakeLists.txt — 7139 bytes — ok
+- CMakeLists.txt — 8656 bytes — ok
 - Classes/main.cpp — 178 bytes — ok
-- Classes/core/AppDelegate.cpp — 1209 bytes — ok
+- Classes/audio/Sound.cpp — 2991 bytes — ok
+- Classes/audio/Sound.h — 485 bytes — ok
+- Classes/core/AppDelegate.cpp — 1717 bytes — ok
 - Classes/core/AppDelegate.h — 362 bytes — ok
 - Classes/core/CrashGuard.h — 195 bytes — ok
-- Classes/game/Enemy.cpp — 4865 bytes — ok
-- Classes/game/Enemy.h — 1659 bytes — ok
+- Classes/core/Settings.h — 641 bytes — ok
+- Classes/game/Enemy.cpp — 6908 bytes — ok
+- Classes/game/Enemy.h — 2154 bytes — ok
 - Classes/game/Entity.cpp — 187 bytes — ok
 - Classes/game/Entity.h — 788 bytes — ok
-- Classes/game/Player.cpp — 9706 bytes — ok
+- Classes/game/Player.cpp — 11939 bytes — ok
 - Classes/game/Player.h — 2927 bytes — ok
-- Classes/game/bosses/BossGolem.cpp — 10008 bytes — ok
+- Classes/game/bosses/BossGolem.cpp — 11319 bytes — ok
 - Classes/game/bosses/BossGolem.h — 658 bytes — ok
-- Classes/game/enemies/Goomba.cpp — 327 bytes — ok
-- Classes/game/enemies/Goomba.h — 153 bytes — ok
-- Classes/game/enemies/Spiker.cpp — 328 bytes — ok
-- Classes/game/enemies/Spiker.h — 153 bytes — ok
+- Classes/game/enemies/Goomba.cpp — 2316 bytes — ok
+- Classes/game/enemies/Goomba.h — 197 bytes — ok
+- Classes/game/enemies/Spiker.cpp — 2463 bytes — ok
+- Classes/game/enemies/Spiker.h — 195 bytes — ok
 - Classes/game/loot/LootTable.cpp — 3517 bytes — ok
 - Classes/game/loot/LootTable.h — 1041 bytes — ok
-- Classes/game/map/LevelBuilder.cpp — 9491 bytes — ok
-- Classes/game/map/LevelBuilder.h — 442 bytes — ok
-- Classes/game/objects/Chest.cpp — 1863 bytes — ok
-- Classes/game/objects/Chest.h — 246 bytes — ok
-- Classes/game/objects/Coin.cpp — 1583 bytes — ok
+- Classes/game/map/LevelBuilder.cpp — 14710 bytes — ok
+- Classes/game/map/LevelBuilder.h — 476 bytes — ok
+- Classes/game/objects/Chest.cpp — 1869 bytes — ok
+- Classes/game/objects/Chest.h — 376 bytes — ok
+- Classes/game/objects/Coin.cpp — 1454 bytes — ok
 - Classes/game/objects/Coin.h — 279 bytes — ok
 - Classes/game/objects/Crate.cpp — 792 bytes — ok
 - Classes/game/objects/Crate.h — 152 bytes — ok
@@ -94,9 +109,9 @@
 - Classes/game/objects/Gate.h — 287 bytes — ok
 - Classes/game/objects/PressurePlate.cpp — 725 bytes — ok
 - Classes/game/objects/PressurePlate.h — 320 bytes — ok
-- Classes/game/objects/Star.cpp — 826 bytes — ok
-- Classes/game/objects/Star.h — 149 bytes — ok
-- Classes/game/objects/Upgrade.cpp — 3391 bytes — ok
+- Classes/game/objects/Star.cpp — 1518 bytes — ok
+- Classes/game/objects/Star.h — 190 bytes — ok
+- Classes/game/objects/Upgrade.cpp — 3405 bytes — ok
 - Classes/game/objects/Upgrade.h — 1042 bytes — ok
 - Classes/game/upgrades/UpgradeSystem.cpp — 1454 bytes — ok
 - Classes/game/upgrades/UpgradeSystem.h — 1099 bytes — ok
@@ -105,12 +120,20 @@
 - Classes/game/weapon/Slash.cpp — 2586 bytes — ok
 - Classes/game/weapon/Slash.h — 381 bytes — ok
 - Classes/physics/PhysicsDefs.h — 3795 bytes — ok
-- Classes/scenes/GameScene.cpp — 18338 bytes — ok
-- Classes/scenes/GameScene.h — 1950 bytes — ok
-- Classes/scenes/MenuScene.cpp — 1644 bytes — ok
-- Classes/scenes/MenuScene.h — 375 bytes — ok
+- Classes/scenes/CreditsScene.cpp — 2629 bytes — ok
+- Classes/scenes/CreditsScene.h — 342 bytes — ok
+- Classes/scenes/EndScene.cpp — 2534 bytes — ok
+- Classes/scenes/EndScene.h — 267 bytes — ok
+- Classes/scenes/GameScene.cpp — 19600 bytes — ok
+- Classes/scenes/GameScene.h — 1982 bytes — ok
+- Classes/scenes/MenuScene.cpp — 6263 bytes — ok
+- Classes/scenes/MenuScene.h — 590 bytes — ok
+- Classes/scenes/SettingsScene.cpp — 5339 bytes — ok
+- Classes/scenes/SettingsScene.h — 570 bytes — ok
 - Classes/ui/HUDLayer.cpp — 5546 bytes — ok
 - Classes/ui/HUDLayer.h — 1408 bytes — ok
+- Classes/ui/PauseLayer.cpp — 3803 bytes — ok
+- Classes/ui/PauseLayer.h — 300 bytes — ok
 
 
 
@@ -121,6 +144,11 @@ cmake_minimum_required(VERSION 3.20)
 # ================== Project meta ==================
 set(APP_NAME Faterial)
 project(${APP_NAME} C CXX)
+
+# Chuẩn C/C++
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ================== MSVC runtime & common defs ==================
 if (MSVC)
@@ -143,6 +171,16 @@ if(APPLE OR WINDOWS)
     cocos_mark_multi_resources(common_res_files RES_TO "Resources" FOLDERS ${GAME_RES_FOLDER})
 endif()
 
+# ===== Helper: chỉ append file nếu tồn tại (cho optional scenes) =====
+function(append_if_exists outvar)
+    foreach(f IN LISTS ARGN)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${f}")
+            list(APPEND ${outvar} ${f})
+        endif()
+    endforeach()
+    set(${outvar} "${${outvar}}" PARENT_SCOPE)
+endfunction()
+
 # ================== Game headers & sources ==================
 set(GAME_HEADER
     # core
@@ -154,37 +192,17 @@ set(GAME_HEADER
 
     # ui
     Classes/ui/HUDLayer.h
+    Classes/ui/PauseLayer.h            # << thêm
 
     # scenes
     Classes/scenes/MenuScene.h
     Classes/scenes/GameScene.h
-
-    # game base
-    Classes/game/Entity.h
-    Classes/game/Player.h
-    Classes/game/Enemy.h
-
-    # enemies / bosses
-    Classes/game/enemies/Goomba.h
-    Classes/game/enemies/Spiker.h
-    Classes/game/bosses/BossGolem.h
-
-    # objects
-    Classes/game/objects/Coin.h
-    Classes/game/objects/Star.h
-    Classes/game/objects/Upgrade.h
-    Classes/game/objects/Crate.h
-    Classes/game/objects/Gate.h
-    Classes/game/objects/PressurePlate.h
-    Classes/game/objects/Chest.h
-
-    # weapon
-    Classes/game/weapon/Bullet.h
-    Classes/game/weapon/Slash.h
-
-    # loot & map
-    Classes/game/loot/LootTable.h
-    Classes/game/map/LevelBuilder.h
+    # optional scenes (tự động nếu có)
+)
+append_if_exists(GAME_HEADER
+    Classes/scenes/SettingsScene.h
+    Classes/scenes/CreditsScene.h
+    Classes/scenes/EndScene.h
 )
 
 set(GAME_SRC
@@ -193,22 +211,56 @@ set(GAME_SRC
 
     # ui
     Classes/ui/HUDLayer.cpp
+    Classes/ui/PauseLayer.cpp          # << thêm (QUAN TRỌNG)
 
     # scenes
     Classes/scenes/MenuScene.cpp
     Classes/scenes/GameScene.cpp
+    # optional scenes (tự động nếu có)
+)
+append_if_exists(GAME_SRC
+    Classes/scenes/SettingsScene.cpp
+    Classes/scenes/CreditsScene.cpp
+    Classes/scenes/EndScene.cpp
+)
 
-    # game base
+# game base
+list(APPEND GAME_HEADER
+    Classes/game/Entity.h
+    Classes/game/Player.h
+    Classes/game/Enemy.h
+    Classes/audio/Sound.h
+)
+list(APPEND GAME_SRC
     Classes/game/Entity.cpp
     Classes/game/Player.cpp
     Classes/game/Enemy.cpp
+    Classes/audio/Sound.cpp
+)
 
-    # enemies / bosses
+# enemies / bosses
+list(APPEND GAME_HEADER
+    Classes/game/enemies/Goomba.h
+    Classes/game/enemies/Spiker.h
+    Classes/game/bosses/BossGolem.h
+)
+list(APPEND GAME_SRC
     Classes/game/enemies/Goomba.cpp
     Classes/game/enemies/Spiker.cpp
     Classes/game/bosses/BossGolem.cpp
+)
 
-    # objects
+# objects
+list(APPEND GAME_HEADER
+    Classes/game/objects/Coin.h
+    Classes/game/objects/Star.h
+    Classes/game/objects/Upgrade.h
+    Classes/game/objects/Crate.h
+    Classes/game/objects/Gate.h
+    Classes/game/objects/PressurePlate.h
+    Classes/game/objects/Chest.h
+)
+list(APPEND GAME_SRC
     Classes/game/objects/Coin.cpp
     Classes/game/objects/Star.cpp
     Classes/game/objects/Upgrade.cpp
@@ -216,12 +268,24 @@ set(GAME_SRC
     Classes/game/objects/Gate.cpp
     Classes/game/objects/PressurePlate.cpp
     Classes/game/objects/Chest.cpp
+)
 
-    # weapon
+# weapon
+list(APPEND GAME_HEADER
+    Classes/game/weapon/Bullet.h
+    Classes/game/weapon/Slash.h
+)
+list(APPEND GAME_SRC
     Classes/game/weapon/Bullet.cpp
     Classes/game/weapon/Slash.cpp
+)
 
-    # loot & map
+# loot & map
+list(APPEND GAME_HEADER
+    Classes/game/loot/LootTable.h
+    Classes/game/map/LevelBuilder.h
+)
+list(APPEND GAME_SRC
     Classes/game/loot/LootTable.cpp
     Classes/game/map/LevelBuilder.cpp
 )
@@ -314,6 +378,14 @@ endif()
 # ================== App config & copy resources/DLL ==================
 setup_cocos_app_config(${APP_NAME})
 
+# Phát hiện optional scenes để bật macro cho MenuScene
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Classes/scenes/SettingsScene.h")
+    target_compile_definitions(${APP_NAME} PRIVATE USE_SETTINGS_SCENE=1)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Classes/scenes/CreditsScene.h")
+    target_compile_definitions(${APP_NAME} PRIVATE USE_CREDITS_SCENE=1)
+endif()
+
 # Ép exe & dll vào build/bin (không tạo Debug/Release con)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -362,6 +434,120 @@ int main(int argc, char** argv) {
 }
 
 
+Folder Classes/audio
+File Sound.cpp
+#include "audio/Sound.h"
+#include "audio/include/AudioEngine.h"
+#include "base/CCUserDefault.h"
+#include "platform/CCFileUtils.h"
+#include "base/ccMacros.h"
+#include "cocos2d.h"
+#include <string>
+
+using namespace cocos2d;
+using AE = cocos2d::AudioEngine;
+
+namespace {
+    int   s_bgmId  = -1;
+    float s_music  = 0.8f;
+    float s_sfx    = 0.8f;
+    std::string s_bgmFile;
+
+    // Cho phép chỉ đặt "gốc tên" (không đuôi) trong Resources/audio/
+    static const char* kBgmMain = "audio/bgm_main";
+    static const char* kSlash   = "audio/sfx_slash";
+    static const char* kShoot   = "audio/sfx_shoot";
+    static const char* kPickup  = "audio/sfx_pickup";
+
+    static std::string pickExisting(const std::string& stem) {
+        static const char* exts[3] = { ".wav", ".mp3", ".ogg" };
+        FileUtils* fu = FileUtils::getInstance();
+        for (int i = 0; i < 3; ++i) {
+            std::string p = stem + exts[i];
+            if (fu->isFileExist(p)) return p;
+        }
+        CCLOG("SND missing: none of (%s.wav|.mp3|.ogg) exists", stem.c_str());
+        return std::string();
+    }
+
+    static int play2dSafe(const std::string& file, bool loop, float vol) {
+        if (file.empty()) return -1;
+        int id = AE::play2d(file, loop, vol);
+        if (id == -1) CCLOG("SND play2d failed: %s", file.c_str());
+        return id;
+    }
+}
+
+void snd::init() {
+    UserDefault* ud = UserDefault::getInstance();
+    s_music = clampf(ud->getFloatForKey("cfg.music", 0.8f), 0.f, 1.f);
+    s_sfx   = clampf(ud->getFloatForKey("cfg.sfx",   0.8f), 0.f, 1.f);
+
+    std::string p;
+    p = pickExisting(kSlash);   if (!p.empty()) AE::preload(p);
+    p = pickExisting(kShoot);   if (!p.empty()) AE::preload(p);
+    p = pickExisting(kPickup);  if (!p.empty()) AE::preload(p);
+}
+
+void snd::setVolumes(float music, float sfx) {
+    s_music = clampf(music, 0.f, 1.f);
+    s_sfx   = clampf(sfx,   0.f, 1.f);
+    if (s_bgmId != -1) AE::setVolume(s_bgmId, s_music);
+}
+
+float snd::musicVol() { return s_music; }
+float snd::sfxVol()   { return s_sfx;   }
+
+void snd::playBgm(const std::string& fileOrStem, bool loop) {
+    std::string file = fileOrStem;
+
+    FileUtils* fu = FileUtils::getInstance();
+    if (!fu->isFileExist(file)) {
+        if (file.find('.') == std::string::npos) {
+            file = pickExisting(file);
+        } else {
+            std::string stem = file.substr(0, file.find_last_of('.'));
+            file = pickExisting(stem);
+        }
+    }
+
+    if (s_bgmId != -1) { AE::stop(s_bgmId); s_bgmId = -1; }
+    s_bgmFile = file;
+    s_bgmId   = play2dSafe(file, loop, s_music);
+}
+
+void snd::stopBgm() {
+    if (s_bgmId != -1) { AE::stop(s_bgmId); s_bgmId = -1; }
+}
+
+void snd::sfxSlash() { play2dSafe(pickExisting(kSlash),  false, s_sfx); }
+void snd::sfxShoot() { play2dSafe(pickExisting(kShoot),  false, s_sfx); }
+void snd::sfxCoin()  { play2dSafe(pickExisting(kPickup), false, s_sfx); }
+
+File Sound.h
+#pragma once
+#include <string>
+
+namespace snd {
+    // Gọi 1 lần ở App khởi động
+    void init();
+
+    // Áp dụng volume (0..1), tự lấy từ UserDefault nếu bạn muốn
+    void setVolumes(float music, float sfx);
+    float musicVol();
+    float sfxVol();
+
+    // Nhạc nền
+    void playBgm(const std::string& file, bool loop = true);
+    void stopBgm();
+
+    // Hiệu ứng
+    void sfxSlash();
+    void sfxShoot();
+    void sfxCoin();
+}
+
+
 Folder Classes/core
 File AppDelegate.cpp
 // AppDelegate.cpp
@@ -369,20 +555,29 @@ File AppDelegate.cpp
 #include "base/CCDirector.h"
 #include "platform/CCGLView.h"
 #include "scenes/MenuScene.h"
+
+// Âm thanh
+#include "audio/include/AudioEngine.h"
+#include "audio/Sound.h"
+
 USING_NS_CC;
+using AE = cocos2d::AudioEngine;
 
 AppDelegate::AppDelegate() {}
-AppDelegate::~AppDelegate() {}
+AppDelegate::~AppDelegate() {
+    // Giải phóng AudioEngine an toàn khi thoát app
+    AE::end();
+}
 
-void AppDelegate::initGLContextAttrs(){
+void AppDelegate::initGLContextAttrs() {
     GLContextAttrs a{8,8,8,8,24,8};
     GLView::setGLContextAttrs(a);
 }
 
-bool AppDelegate::applicationDidFinishLaunching(){
+bool AppDelegate::applicationDidFinishLaunching() {
     auto* director = Director::getInstance();
-    auto* glview = director->getOpenGLView();
-    if(!glview){
+    auto* glview   = director->getOpenGLView();
+    if (!glview) {
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
         glview = GLViewImpl::createWithRect("Faterial", Rect(0,0,1920,1080));
 #else
@@ -390,16 +585,34 @@ bool AppDelegate::applicationDidFinishLaunching(){
 #endif
         director->setOpenGLView(glview);
     }
+
     director->setAnimationInterval(1.0f/60.0f);
 #if COCOS2D_DEBUG
     director->setDisplayStats(true);
 #endif
+
+    // Thiết lập thiết kế màn hình
     glview->setDesignResolutionSize(1280, 720, ResolutionPolicy::NO_BORDER);
+
+    // Khởi tạo âm thanh (đọc volume đã lưu, preload sfx)
+    snd::init();
+
+    // Chạy vào Menu
     director->runWithScene(MenuScene::createScene());
     return true;
 }
-void AppDelegate::applicationDidEnterBackground(){ Director::getInstance()->stopAnimation(); }
-void AppDelegate::applicationWillEnterForeground(){ Director::getInstance()->startAnimation(); }
+
+void AppDelegate::applicationDidEnterBackground() {
+    // Tạm dừng render + âm thanh
+    Director::getInstance()->stopAnimation();
+    AE::pauseAll();
+}
+
+void AppDelegate::applicationWillEnterForeground() {
+    // Tiếp tục render + âm thanh
+    Director::getInstance()->startAnimation();
+    AE::resumeAll();
+}
 
 File AppDelegate.h
 // AppDelegate.h
@@ -421,6 +634,29 @@ File CrashGuard.h
 #define CG_LOGF(path, fmt, ...) \
   do { FILE* f=nullptr; fopen_s(&f, (path), "a"); if(f){std::fprintf(f, fmt "\n", ##__VA_ARGS__); std::fclose(f);} } while(0)
 
+File Settings.h
+#pragma once
+#include "base/CCUserDefault.h"
+
+struct Settings {
+    float musicVolume = 0.8f; // 0..1
+    float sfxVolume   = 1.0f; // 0..1
+
+    static Settings load() {
+        Settings s;
+        auto* ud = cocos2d::UserDefault::getInstance();
+        s.musicVolume = ud->getFloatForKey("musicVolume", 0.8f);
+        s.sfxVolume   = ud->getFloatForKey("sfxVolume",   1.0f);
+        return s;
+    }
+    void save() const {
+        auto* ud = cocos2d::UserDefault::getInstance();
+        ud->setFloatForKey("musicVolume", musicVolume);
+        ud->setFloatForKey("sfxVolume",   sfxVolume);
+        ud->flush();
+    }
+};
+
 
 Folder Classes/game
 File Enemy.cpp
@@ -437,9 +673,28 @@ File Enemy.cpp
 #include "physics/CCPhysicsShape.h"
 
 #include "2d/CCDrawNode.h"
-#include "base/ccRandom.h"
+#include "2d/CCDrawNode.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
-USING_NS_CC;
+
+
+using namespace cocos2d;
+
+static inline void drawMiniHp(DrawNode* dn, int cur, int max) {
+    if (!dn) return;
+    dn->clear();
+    const float W=30.f, H=4.f, pad=1.f;
+    dn->drawSolidRect(Vec2(-W*0.5f, 10), Vec2(W*0.5f, 10+H), Color4F(0,0,0,0.55f));
+    float ratio = (max>0)? (float)cur/(float)max : 0.f;
+    float ww = (W-2*pad) * ratio;
+    dn->drawSolidRect(Vec2(-W*0.5f+pad, 10+pad), Vec2(-W*0.5f+pad+ww, 10+H-pad),
+                      Color4F(0.25f,0.95f,0.35f,1));
+}
 
 static inline float sgn(float x) { return (x > 0.f) ? 1.f : (x < 0.f ? -1.f : 0.f); }
 
@@ -447,16 +702,50 @@ bool Enemy::init() {
     if (!Entity::init()) return false;
     setTagEx((int)phys::Tag::ENEMY);
 
-    _sprite = Sprite::create();
-    _sprite->setTextureRect(Rect(0, 0, 42, 42));
-    _sprite->setColor(Color3B(200, 70, 70));
-    addChild(_sprite);
+    // _sprite = Sprite::create();
+    // _sprite->setTextureRect(Rect(0,0,42,42));
+    // _sprite->setColor(Color3B(200,70,70));
+    // addChild(_sprite);
 
     _hpbar = DrawNode::create();
     addChild(_hpbar, 2);
 
     schedule([this](float dt) { updateEnemy(dt); }, "enemy.tick");
     return true;
+}
+
+
+Vector<SpriteFrame*> Enemy::buildFrames(const std::string& animName, int frameCount, const std::string& className) {
+
+    Vector<SpriteFrame*> frames;
+    for (int i = 1; i < frameCount+1; ++i) {
+        std::string path = StringUtils::format("sprites/%s/%s/%s_%d.png", className.c_str(), animName.c_str(), animName.c_str(), i);
+        auto tex = Director::getInstance()->getTextureCache()->addImage(path);
+        if (!tex) break; // không tìm thấy file => dừng
+        Rect rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+        frames.pushBack(SpriteFrame::create(path, rect));
+    }
+    return frames;
+
+}
+
+void Enemy::playAnim(const std::string& animName, float delay, int frameCount, const std::string& className) {
+    CCLOG("Play anim: %s", animName.c_str());
+    if (_currentAnim == animName) return;
+
+    auto frames = buildFrames(animName, frameCount, className);
+    if (frames.empty()) {
+        CCLOG("Không tìm thấy frame cho anim: %s", animName.c_str());
+        return;
+    }
+    _currentAnim = animName;
+    auto animation = Animation::createWithSpriteFrames(frames, delay);
+    auto act = RepeatForever::create(Animate::create(animation));
+
+    if (_sprite) {
+        _sprite->stopAllActions();
+        _sprite->runAction(act);
+    }
 }
 
 void Enemy::enablePhysics(const Vec2& pos, const Size& bodySize) {
@@ -500,33 +789,34 @@ void Enemy::setPatrol(const Vec2& a, const Vec2& b) {
         setPosition((_pA + _pB) * 0.5f);
 }
 
+
 void Enemy::updateEnemy(float) {
-    if (!_body) return;
+    // if (!_body) return;
 
-    Vec2 v = _body->getVelocity();
+    // Vec2 v = _body->getVelocity();
 
-    // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
-    bool chasing = false;
-    if (_aggroEnabled && _target) {
-        float dx = _target->getPositionX() - getPositionX();
-        float dy = _target->getPositionY() - getPositionY();
-        if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
-            _dir = (dx >= 0 ? +1 : -1);
-            v.x = _dir * _chaseSpeed;
-            chasing = true;
-        }
-    }
+    // // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
+    // bool chasing = false;
+    // if (_aggroEnabled && _target) {
+    //     float dx = _target->getPositionX() - getPositionX();
+    //     float dy = _target->getPositionY() - getPositionY();
+    //     if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
+    //         _dir = (dx >= 0 ? +1 : -1);
+    //         v.x = _dir * _chaseSpeed;
+    //         chasing = true;
+    //     }
+    // }
 
-    // Không đuổi -> tuần tra giữa 2 mốc
-    if (!chasing && _pA != _pB) {
-        float x = getPositionX();
-        if (_dir > 0 && x >= _pB.x) _dir = -1;
-        else if (_dir < 0 && x <= _pA.x) _dir = +1;
-        v.x = _dir * _moveSpeed;
-    }
+    // // Không đuổi -> tuần tra giữa 2 mốc
+    // if (!chasing && _pA != _pB) {
+    //     float x = getPositionX();
+    //     if (_dir > 0 && x >= _pB.x) _dir = -1;
+    //     else if (_dir < 0 && x <= _pA.x) _dir = +1;
+    //     v.x = _dir * _moveSpeed;
+    // }
 
-    v.y = std::max(v.y, -900.0f);
-    _body->setVelocity(v);
+    // v.y = std::max(v.y, -900.0f);
+    // _body->setVelocity(v);
 }
 
 void Enemy::_updateHpBar() {
@@ -590,6 +880,10 @@ File Enemy.h
 #include "cocos2d.h"
 #include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
+#include "game/Entity.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
 class Player;
 
@@ -597,9 +891,8 @@ class Enemy : public Entity {
 public:
     CREATE_FUNC(Enemy);
     bool init() override;
+    void enablePhysics(const cocos2d::Vec2& pos, const cocos2d::Size& bodySize = cocos2d::Size(42, 42));
 
-    void enablePhysics(const cocos2d::Vec2& pos,
-                       const cocos2d::Size& bodySize = cocos2d::Size(42,42));
     void setPatrol(const cocos2d::Vec2& a, const cocos2d::Vec2& b);
 
     // Target + Aggro
@@ -625,9 +918,14 @@ protected:
     cocos2d::Sprite*      _sprite  = nullptr;
     cocos2d::PhysicsBody* _body    = nullptr;
     cocos2d::DrawNode*    _hpbar   = nullptr;
+    Player*               _target  = nullptr;
 
-    // AI
-    Player* _target = nullptr;
+    std::string _currentAnim;
+    
+    //!PLAY ANIMATION
+    void playAnim(const std::string& name, float delay, int frames, const std::string& className);
+    // !helper to build frames either from SpriteFrameCache (.plist) or from individual png files
+    virtual cocos2d::Vector<cocos2d::SpriteFrame*> buildFrames(const std::string& animName, int frameCount, const std::string& className);
     cocos2d::Vec2 _pA, _pB;
     int   _dir = +1;
     float _moveSpeed = 90.f;      // tuần tra
@@ -672,20 +970,63 @@ protected:
 };
 
 File Player.cpp
+// Classes/game/Player.cpp  — phiên bản có SFX bắn/chém + jump/land/hurt (fallback đuôi)
 #include "game/Player.h"
+
 #include "2d/CCDrawNode.h"
-#include "physics/CCPhysicsBody.h"
-#include "physics/CCPhysicsShape.h"
-#include <algorithm>
-#include <cmath>
 #include "2d/CCSprite.h"
 #include "2d/CCAnimation.h"
 #include "2d/CCAnimationCache.h"
+
+#include "physics/CCPhysicsBody.h"
+#include "physics/CCPhysicsShape.h"
+
 #include "GameScene.h"
 #include "game/weapon/Bullet.h"
 #include "game/weapon/Slash.h"
 
+// Âm thanh
+#include "audio/Sound.h"                        // dùng snd::sfxShoot(), snd::sfxSlash()
+#include "audio/include/AudioEngine.h"          // fallback SFX cho jump/land/hurt
+#include "platform/CCFileUtils.h"
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+
 using namespace cocos2d;
+
+// ==============================
+// SFX helpers (fallback by stem)
+// ==============================
+namespace {
+    using AE = cocos2d::AudioEngine;
+
+    // Cho phép chỉ truyền "gốc tên" (stem), tự tìm .wav/.mp3/.ogg nếu tồn tại
+    inline std::string _pickAudio(const char* stem) {
+        static const char* exts[] = { ".wav", ".mp3", ".ogg" };
+        auto* fu = FileUtils::getInstance();
+        for (auto* ext : exts) {
+            std::string p = std::string(stem) + ext;
+            if (fu->isFileExist(p)) return p;
+        }
+        CCLOG("SND missing: %s.(wav|mp3|ogg) not found", stem);
+        return {};
+    }
+
+    inline void _sfxOptional(const char* stem, float vol = 0.9f) {
+        if (!stem) return;
+        std::string f = _pickAudio(stem);
+        if (!f.empty()) AE::play2d(f, false, vol);
+    }
+
+    // Tên gốc (stem) cho các SFX thêm mới:
+    constexpr const char* SFX_JUMP = "audio/sfx_jump";
+    constexpr const char* SFX_LAND = "audio/sfx_land";
+    constexpr const char* SFX_HURT = "audio/sfx_hurt";
+}
+
+// ==============================
 
 static inline float approach(float cur, float target, float delta) {
     if (cur < target) return std::min(target, cur + delta);
@@ -696,6 +1037,8 @@ static inline float approach(float cur, float target, float delta) {
 bool Player::init() {
     if (!Entity::init()) return false;
     CCLOG("Player::init");
+    this->setName("player");
+
 
     _sprite = Sprite::create("sprites/player/idle/idle_1.png");
     _sprite->setAnchorPoint(Vec2(0.5f, 0.5f));
@@ -708,7 +1051,7 @@ bool Player::init() {
 }
 
 void Player::refreshVisual() {
-    // debug draw collider nếu cần
+    // (tùy chọn) debug collider
 }
 
 void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
@@ -718,8 +1061,7 @@ void Player::enablePhysics(const Vec2& feetPos, const Size& bodySize) {
     _body = buildOrUpdateBody(_colSize);
     applyPlayerMasks();
 
-    // LƯU Ý: Cocos2d-x dùng setEnabled (đúng chính tả)
-    _body->setEnabled(true);
+    _body->setEnabled(true);          // đúng chính tả cocos2d-x
     _body->setGravityEnable(true);
     _body->setDynamic(true);
     _body->setVelocity(Vec2::ZERO);
@@ -740,12 +1082,14 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
         for (auto s : shapes) _body->removeShape(s);
     }
 
+    // main box (trọng tâm nằm giữa thân)
     auto mainBox = PhysicsShapeBox::create(
         sz, PhysicsMaterial(0.1f, 0.0f, 0.5f),
         Vec2(0, +sz.height * 0.5f)
     );
     _body->addShape(mainBox);
 
+    // chân (sensor) — để đếm tiếp đất
     const float footH = std::max(4.0f, sz.height * 0.08f);
     const Size  footSize(sz.width * 0.60f, footH);
     const Vec2  footOffset(0, -footH * 0.5f);
@@ -762,12 +1106,12 @@ PhysicsBody* Player::buildOrUpdateBody(const Size& bodySize) {
 void Player::applyPlayerMasks() {
     if (!_body) return;
 
-    // va chạm cứng: như cũ
+    // va chạm cứng
     const phys::Mask collide =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_SOLID |
         phys::CAT_GATE  | phys::CAT_CRATE;
 
-    // LIÊN HỆ (contact) — THÊM CAT_ENEMY_PROJ  ⬇⬇⬇
+    // contact (thêm ENEMY_PROJ để ăn đạn địch)
     const phys::Mask contact =
         phys::CAT_WORLD | phys::CAT_ENEMY | phys::CAT_ENEMY_PROJ |
         phys::CAT_ITEM  | phys::CAT_BULLET | phys::CAT_SENSOR;
@@ -788,19 +1132,24 @@ void Player::jump() {
 
     if (_footContacts > 0) {
         _body->applyImpulse(Vec2(0, impulse));
+        _sfxOptional(SFX_JUMP);       // 🔊 nhảy từ đất
         return;
     }
     if (_airJumpsMax > 0 && _airJumpsUsed < _airJumpsMax) {
         _airJumpsUsed++;
         _body->setVelocity(Vec2(_body->getVelocity().x, 0));
         _body->applyImpulse(Vec2(0, impulse * 0.92f));
+        _sfxOptional(SFX_JUMP);       // 🔊 nhảy trên không
     }
 }
 
 void Player::incFoot(int delta) {
-    int prev = _footContacts;
+    const int prev = _footContacts;
     _footContacts = std::max(0, _footContacts + delta);
-    if (prev==0 && _footContacts>0) _airJumpsUsed = 0; // chạm đất -> reset
+    if (prev==0 && _footContacts>0) {
+        _airJumpsUsed = 0;            // chạm đất -> reset
+        _sfxOptional(SFX_LAND);       // 🔊 chạm đất
+    }
 }
 
 void Player::heal(int v) { _hp = std::min(_maxHp, _hp + std::max(0, v)); }
@@ -810,6 +1159,7 @@ void Player::hurt(int dmg) {
     if (invincible() || !_body) return;
     _hp = std::max(0, _hp - std::max(1, dmg));
     _invincibleT = 0.8f;
+    _sfxOptional(SFX_HURT);           // 🔊 bị thương
 
     const float dir = (_facing > 0 ? -1.f : +1.f);
     _body->applyImpulse(Vec2(200.f * dir, 260.f));
@@ -832,6 +1182,7 @@ void Player::doShoot(){
                 auto b = Bullet::create(origin, vel, 1.5f);
                 if (getParent() && b) getParent()->addChild(b, 6);
             }
+            snd::sfxShoot();          // 🔊 bắn
         }),
         DelayTime::create(0.36f),
         CallFunc::create([this]() { _shooting = false; }),
@@ -851,6 +1202,7 @@ void Player::doSlash(){
             float angle = (dir > 0) ? 0.0f : 3.14159265f;
             auto s = Slash::create(origin, angle, _slashRange, 0.12f);
             if (auto p=getParent()) p->addChild(s, 6);
+            snd::sfxSlash();          // 🔊 chém
         }),
         DelayTime::create(0.30f),
         CallFunc::create([this]{ _attacking = false; }),
@@ -897,7 +1249,7 @@ void Player::playAnim(const std::string& animName, float delay, int frameCount) 
 void Player::update(float dt) {
     if (!_body) return;
 
-    // blink invuln
+    // invuln blink
     if (_invincibleT > 0.f) {
         _invincibleT -= dt;
         const bool blink = ((int)std::floor(_invincibleT * 20.f)) % 2 == 0;
@@ -927,15 +1279,20 @@ void Player::update(float dt) {
     else nextAnim = "idle";
 
     if (_currentAnim != nextAnim){
-        if (nextAnim == "die")      playAnim("die",   0.12f, 6);
-        else if (nextAnim == "jump")playAnim("jump",  0.23f, 4);
-        else if (nextAnim == "run") playAnim("run",   0.06f, 8);
+        if (nextAnim == "die")         playAnim("die",    0.12f, 6);
+        else if (nextAnim == "jump")   playAnim("jump",   0.23f, 4);
+        else if (nextAnim == "run")    playAnim("run",    0.06f, 8);
         else if (nextAnim == "attack") playAnim("attack", 0.06f, 6);
         else if (nextAnim == "shoot")  playAnim("shoot",  0.08f, 6);
-        else playAnim("idle", 0.12f, 8);
+        else                           playAnim("idle",   0.12f, 8);
     }
 
-    if (_sprite) _sprite->setScaleX(_facing);
+    // lật sprite vẫn giữ scale gốc
+    if (_sprite) {
+        float sx = std::fabs(_sprite->getScaleX());
+        if (sx < 0.01f) sx = 1.4f; // nếu trước đó bị set về 0/1, lấy lại mặc định
+        _sprite->setScaleX(_facing * sx);
+    }
 
     // đếm buff & revert
     for (int i=(int)_buffs.size()-1; i>=0; --i){
@@ -1034,8 +1391,8 @@ private:
     float _moveSpeed   = 180.f;
     float _accelGround = 1200.f;
     float _accelAir    = 650.f;
-    // float _jumpImpulse = 420.f;
-    float _jumpImpulse = 600.f;
+    float _jumpImpulse = 550.f;
+    // float _jumpImpulse = 600.f;
     float _maxFall     = 1200.f;
 
     // HP/invuln
@@ -1068,6 +1425,10 @@ File BossGolem.cpp
 #include "physics/PhysicsDefs.h"
 #include "2d/CCDrawNode.h"
 #include "physics/CCPhysicsBody.h"
+#include "2d/CCActionInstant.h"
+#include "base/CCDirector.h"
+#include "physics/CCPhysicsBody.h"
+#include "game/Player.h"
 #include "physics/CCPhysicsShape.h"
 #include "base/ccRandom.h"
 
@@ -1091,18 +1452,29 @@ bool BossGolem::init() {
     _cd = 1.0f;
 
     if (_sprite) {
-        _sprite->setTextureRect(Rect(0,0,72,72));
-        _sprite->setColor(Color3B(120,170,255));
-        _sprite->setScale(1.2f);
+        _sprite->removeFromParent();
+        _sprite = nullptr; // Reset con trỏ
     }
 
-    // hitbox thân boss
-    enablePhysics(getPosition(), Size(72,72));
+        _sprite = Sprite::create("sprites/boss/idle/idle_1.png");
+        _sprite->setAnchorPoint(Vec2(0.5f, 0.5f)); // chân ở dưới
+        _sprite->setPosition(Vec2(0.f, 150.f));
+        _sprite->setScale(2.5f);
+        addChild(_sprite, 1);
 
-    // AI tick
+    auto size = _sprite->getContentSize() * _sprite->getScale();
+    _body = PhysicsBody::createBox(size);
+    setPhysicsBody(_body);
+
+    // scheduleUpdate();
+    // schedule([this](float){ updateEnemy(0); }, "enemy.tick");
     schedule([this](float dt){ this->_tickBoss(dt); }, "boss.ai");
+
+
     return true;
 }
+
+
 
 void BossGolem::takeHit(int dmg){
     if (_dead || _dying) return;
@@ -1232,7 +1604,9 @@ namespace {
         n->addComponent(body);
 
         n->schedule([n, target, speed, turnRate](float dt){
-            auto b = n->getPhysicsBody(); if (!b || !target || !target->getParent()) return;
+            auto b = n->getPhysicsBody(); 
+            if (!b || !target) return;
+            if (!target->getParent()) return;
             Vec2 from = n->getPosition(), to = target->getPosition();
             Vec2 dir  = (to - from).getNormalized();
             Vec2 desired = dir * speed;
@@ -1281,6 +1655,8 @@ void BossGolem::_tickBoss(float dt){
         v.x = (dx > 0 ? +1 : -1) * std::min(_moveSpeed * 0.6f, 80.f);
         v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
+        playAnim("walk", 0.18f, 12, "boss");
+
         _cd -= dt * 0.5f;
         return;
     }
@@ -1291,6 +1667,10 @@ void BossGolem::_tickBoss(float dt){
         v.x *= 0.9f;
         v.y = std::max(v.y, -900.f);
         _body->setVelocity(v);
+        playAnim("walk", 0.18f, 12, "boss");
+        if (_sprite) _sprite->setFlippedX(_dir > 0);
+
+
         return;
     }
 
@@ -1310,12 +1690,23 @@ void BossGolem::_blinkStrike(const Vec2& playerPos){
 
     if (_sprite) _sprite->runAction(TintTo::create(0.0f, 200,240,255));
     runAction(Sequence::create(
+        CallFunc::create([=](){ // BẮT ĐẦU hoạt ảnh ATTACK
+            playAnim("attack", 0.18f, 15, "boss");
+            if (_sprite) _sprite->setFlippedX(dir < 0); // Đổi hướng ở đây (hoặc trước đó)
+        }),
         DelayTime::create(0.12f), // telegraph ngắn
         CallFunc::create([=](){
+            // ... (phần code dịch chuyển, AOE) ...
             setPosition(bp + Vec2(dir * 180.f, 0));
             auto aoe = makeAoeRing(getPosition(), 90.f, 0.24f);
             if (aoe) parent->addChild(aoe, 7);
             if (_sprite) _sprite->runAction(TintTo::create(0.0f, 120,170,255));
+            // Không cần setFlippedX ở đây nữa nếu đã set ở trên
+        }),
+        DelayTime::create(0.18f * 15), // Chờ hoạt ảnh Attack kết thúc (ví dụ 15 frame * 0.18s)
+        CallFunc::create([=](){
+            // Chuyển về idle/walk nếu cần
+            // playAnim("walk", 0.18f, 12, "boss");
         }),
         nullptr
     ));
@@ -1377,12 +1768,66 @@ Folder Classes/game/enemies
 File Goomba.cpp
 // Goomba.cpp
 #include "game/enemies/Goomba.h"
+#include "game/Player.h"
+
 USING_NS_CC;
 Goomba* Goomba::create(){ auto p=new(std::nothrow) Goomba(); if(p && p->init()){p->autorelease(); return p;} CC_SAFE_DELETE(p); return nullptr; }
 bool Goomba::init(){
     if(!Enemy::init()) return false;
-    setColor(Color3B(200,120,60));
+    
+    // TẠO SPRITE CHO RIÊNG GOOMBA
+    _sprite = Sprite::create("sprites/skeleton1/idle/idle_1.png");
+     _sprite->setScale(1.5f); // tùy chỉnh kích cỡ hiển thị
+    _sprite->setPosition(Vec2(0.f, 0.5f));
+    addChild(_sprite, 1);
     return true;
+}
+
+void Goomba::updateEnemy(float dt) {
+    if (!_body) return;
+
+    Vec2 v = _body->getVelocity();
+    bool chasing = false;
+
+    // --- Logic đuổi (Chasing) ---
+    // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
+    if (_aggroEnabled && _target) {
+        float dx = _target->getPositionX() - getPositionX();
+        float dy = _target->getPositionY() - getPositionY();
+        if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
+            _dir = (dx >= 0 ? +1 : -1);
+            v.x = _dir * _chaseSpeed;
+            chasing = true;
+        }
+    }
+
+    // --- Logic tuần tra (Patrolling) ---
+    // Không đuổi -> tuần tra giữa 2 mốc
+    if (!chasing && _pA != _pB) {
+        float x = getPositionX();
+        if (_dir > 0 && x >= _pB.x) _dir = -1;
+        else if (_dir < 0 && x <= _pA.x) _dir = +1;
+        v.x = _dir * _moveSpeed;
+    }
+
+    // Giới hạn tốc độ rơi
+    v.y = std::max(v.y, -900.0f);
+    _body->setVelocity(v);
+
+    // --- Logic Animation & Sprite Flip ---
+    // Kiểm tra xem enemy có đang di chuyển (v.x != 0) không
+    bool isMoving = (v.x != 0); // Enemy di chuyển khi chasing HOẶC patrolling
+
+    if (isMoving) {
+        // play walk animation khi đang di chuyển (chasing hoặc patrolling)
+        playAnim("walk", 0.12f, 9, "skeleton1");
+    } else {
+        // đứng yên (chasing false VÀ _pA == _pB) → idle
+        playAnim("idle", 0.18f, 9, "skeleton1");
+    }
+
+    // Flip sprite theo hướng di chuyển (trừ khi _dir chưa được set, nhưng trong code này _dir luôn là +1/-1 khi di chuyển)
+    if (_sprite) _sprite->setFlippedX(_dir > 0);
 }
 
 File Goomba.h
@@ -1393,17 +1838,77 @@ class Goomba : public Enemy {
 public:
     static Goomba* create();
     bool init() override;
+    void updateEnemy(float dt) override;
+
 };
 
 File Spiker.cpp
 // Spiker.cpp
 #include "game/enemies/Spiker.h"
+#include "game/Player.h"
+
 USING_NS_CC;
 Spiker* Spiker::create(){ auto p=new(std::nothrow) Spiker(); if(p && p->init()){p->autorelease(); return p;} CC_SAFE_DELETE(p); return nullptr; }
 bool Spiker::init(){
     if(!Enemy::init()) return false;
-    setColor(Color3B(180,200,255));
+    
+    // TẠO SPRITE CHO RIÊNG SPIKER
+    _sprite = Sprite::create("sprites/fireworm/idle/idle_1.png"); // Thay bằng đường dẫn Sprite của Spiker
+     _sprite->setScale(1.4f); // tùy chỉnh kích cỡ hiển thị
+    addChild(_sprite, 1);
+    
+    // Tạo PhysicsBody và các logic vật lý (nếu cần)
+
+    setColor(Color3B(180,200,255)); // Giữ lại logic đổi màu
     return true;
+}
+
+
+void Spiker::updateEnemy(float dt) {
+    if (!_body) return;
+
+    Vec2 v = _body->getVelocity();
+    bool chasing = false;
+
+    // --- Logic đuổi (Chasing) ---
+    // Đuổi khi bật aggro + trong tầm (giới hạn lệch Y để không “hút xuyên tầng”)
+    if (_aggroEnabled && _target) {
+        float dx = _target->getPositionX() - getPositionX();
+        float dy = _target->getPositionY() - getPositionY();
+        if (std::abs(dx) <= _aggroRange && std::abs(dy) <= 160.f) {
+            _dir = (dx >= 0 ? +1 : -1);
+            v.x = _dir * _chaseSpeed;
+            chasing = true;
+        }
+    }
+
+    // --- Logic tuần tra (Patrolling) ---
+    // Không đuổi -> tuần tra giữa 2 mốc
+    if (!chasing && _pA != _pB) {
+        float x = getPositionX();
+        if (_dir > 0 && x >= _pB.x) _dir = -1;
+        else if (_dir < 0 && x <= _pA.x) _dir = +1;
+        v.x = _dir * _moveSpeed;
+    }
+
+    // Giới hạn tốc độ rơi
+    v.y = std::max(v.y, -900.0f);
+    _body->setVelocity(v);
+
+    // --- Logic Animation & Sprite Flip ---
+    // Kiểm tra xem enemy có đang di chuyển (v.x != 0) không
+    bool isMoving = (v.x != 0); // Enemy di chuyển khi chasing HOẶC patrolling
+
+    if (isMoving) {
+        // play walk animation khi đang di chuyển (chasing hoặc patrolling)
+        playAnim("walk", 0.12f, 9, "fireworm");
+    } else {
+        // đứng yên (chasing false VÀ _pA == _pB) → idle
+        playAnim("idle", 0.18f, 9, "fireworm");
+    }
+
+    // Flip sprite theo hướng di chuyển (trừ khi _dir chưa được set, nhưng trong code này _dir luôn là +1/-1 khi di chuyển)
+    if (_sprite) _sprite->setFlippedX(_dir < 0);
 }
 
 File Spiker.h
@@ -1414,6 +1919,7 @@ class Spiker : public Enemy {
 public:
     static Spiker* create();
     bool init() override;
+    void updateEnemy(float dt) override;
 };
 
 
@@ -1577,6 +2083,10 @@ File LevelBuilder.cpp
 #include "game/objects/Upgrade.h"
 #include "game/objects/Star.h"
 #include "2d/CCDrawNode.h"
+#include "game/enemies/Goomba.h"
+#include "game/enemies/Spiker.h"
+#include "2d/CCParallaxNode.h"
+
 
 USING_NS_CC;
 namespace levels {
@@ -1591,16 +2101,50 @@ static const Upgrade::Type UPG_BY_SEG[5] = {
     Upgrade::Type::BULLET,
     Upgrade::Type::DOUBLEJUMP
 };
-// ===================
 
-// nền rắn + body tĩnh
-static Node* makeSolid(Node* root, const Rect& r, const Color4F& col) {
-    auto dn = DrawNode::create();
-    dn->drawSolidRect(r.origin, r.origin + r.size, col);
-    root->addChild(dn, 1);
 
+
+static Node* makeSolid(Node* root, const Rect& r, const Color4F& col, const std::string& texturePath = "", const Vec2& startOffset = Vec2::ZERO) {
+    Node* visualNode = nullptr;
+
+    if (!texturePath.empty()) {
+        // Nếu có đường dẫn texture, tạo Sprite và lặp lại nếu cần
+        // Giả sử bạn có một sprite có kích thước 32x32 cho mỗi tile
+        const float TILE_SIZE = 32.0f; // Kích thước của 1 tile trong PNG
+        
+        // Tạo một Node chứa nhiều Sprite con để tạo hiệu ứng lặp lại
+        visualNode = Node::create();
+        visualNode->setPosition(r.origin); // Đặt vị trí gốc của node này tại góc dưới trái của Rect
+
+        // Tính số lượng tile cần thiết theo chiều rộng và cao
+        int numTilesX = std::ceil(r.size.width / TILE_SIZE);
+        int numTilesY = std::ceil(r.size.height / TILE_SIZE);
+
+        for (int y = 0; y < numTilesY; ++y) {
+            for (int x = 0; x < numTilesX; ++x) {
+                auto tileSprite = Sprite::create(texturePath);
+                if (tileSprite) {
+                    tileSprite->setAnchorPoint(Vec2(0, 0)); // Quan trọng: Đặt anchor ở góc dưới trái
+                    tileSprite->setPosition(startOffset.x + x * TILE_SIZE, startOffset.y + y * TILE_SIZE); // <-- Áp dụng offset
+                    // Có thể cần scale nếu tile trong PNG không đúng 32x32 hoặc muốn điều chỉnh
+                    // tileSprite->setScale(TILE_SIZE / tileSprite->getContentSize().width);
+                    visualNode->addChild(tileSprite);
+                }
+            }
+        }
+        root->addChild(visualNode, 1); // Z-order cho visual node
+
+    } else {
+        // Nếu không có texture, quay lại vẽ màu đặc như cũ
+        auto dn = DrawNode::create();
+        dn->drawSolidRect(r.origin, r.origin + r.size, col);
+        root->addChild(dn, 1);
+        visualNode = dn; // Sử dụng DrawNode làm visual node
+    }
+    
+    // Phần Physics Body vẫn giữ nguyên
     auto n = Node::create();
-    n->setPosition(Vec2::ZERO);
+    n->setPosition(Vec2::ZERO); // Physics body không cần di chuyển, nó sẽ dùng offset
     auto body = PhysicsBody::createBox(r.size, PhysicsMaterial(0.1f,0,0.6f), r.origin + r.size*0.5f);
     body->setDynamic(false);
     body->setCategoryBitmask((int)phys::CAT_WORLD);
@@ -1608,6 +2152,7 @@ static Node* makeSolid(Node* root, const Rect& r, const Color4F& col) {
     body->setContactTestBitmask((int)phys::CAT_ALL);
     n->addComponent(body);
     root->addChild(n, 2);
+
     return n;
 }
 
@@ -1648,7 +2193,15 @@ static Enemy* spawnSpiker(Node* root, const Vec2& pos, const Vec2& pa, const Vec
     return e;
 }
 
+
 BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
+    cocos2d::Size _vs{};
+    cocos2d::Vec2 _origin{};
+    _vs     = Director::getInstance()->getVisibleSize();
+    _origin = Director::getInstance()->getVisibleOrigin();
+    cocos2d::ParallaxNode* _parallaxNode = nullptr; 
+    const float SCREEN_CENTER_X = origin.x + vs.width * 0.5f; 
+    const float SCREEN_CENTER_Y = origin.y + vs.height * 0.5f;
     BuildResult L;
     L.segments     = 5;
     L.segmentWidth = vs.width;
@@ -1656,22 +2209,77 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
     L.playerSpawn  = origin + Vec2(80.f, L.groundTop + 40.f);
 
     // ground dài
+    // makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 24.f), Color4F(0.2f,0.85f,0.2f,1));
+    const Vec2 GROUND_TILE_OFFSET(0.0f, -65.0f); // Dịch chuyển tất cả tile ground xuống 75px
     makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 24.f),
-              Color4F(0.20f,0.85f,0.20f,1));
-
+              Color4F(0.20f,0.85f,0.20f,1), "sprites/tiles/ground_tile.png", GROUND_TILE_OFFSET);
+    
     const float JUMP_DY = 70.f;
     const float GAP_X   = 130.f;
     const float P_W     = 180.f;
     const float P_H     = 16.f;
 
     for (int s=0; s<L.segments; ++s) {
+            _parallaxNode = ParallaxNode::create();
+    // Đặt Z-order rất thấp để nó nằm sau tất cả map và đối tượng.
+    // addChild(_parallaxNode, -100); 
+    root->addChild(_parallaxNode, -100);
+
+    // LỚP BACKGROUND 1 (bgFar): DUY NHẤT VÀ PHỦ ĐẦY MÀN HÌNH
+    auto bgFar = Sprite::create("sprites/backgrounds/background.png"); 
+    if (bgFar) {
+        float bgW = bgFar->getContentSize().width;
+        float bgH = bgFar->getContentSize().height;
+        
+        float scaleX = _vs.width / bgW;
+        float scaleY = _vs.height / bgH;
+        float scale = std::max(scaleX, scaleY); // Phóng to để che phủ cả width và height
+        
+        // Căn tâm Sprite để đặt ở giữa màn hình
+        bgFar->setAnchorPoint(Vec2(0.5f, 0.5f)); 
+        bgFar->setScale(scale); 
+        
+        // Vị trí: Đặt ở trung tâm Viewport
+        float startX = SCREEN_CENTER_X; 
+        float startY = SCREEN_CENTER_Y; 
+        
+        // Tỷ lệ di chuyển: (0.1f, 1.0f)
+        _parallaxNode->addChild(bgFar, -1, Vec2(0.1f, 1.0f), Vec2(startX, startY));
+    }
+    
+    // LỚP BACKGROUND 2 (bgNear): CHỈ 1 ẢNH (Không lặp lại)
+    auto bgNear = Sprite::create("sprites/backgrounds/mountains.png");
+    if (bgNear) {
+        // Đặt anchor point ở góc trái dưới (0, 0)
+        bgNear->setAnchorPoint(Vec2(0.f, 0.f)); 
+        
+        // Vị trí X: Bắt đầu từ mép trái màn hình
+        float startX = _origin.x; 
+        // Vị trí Y: Neo theo _groundTop
+        float startY = L.groundTop - 100.f; 
+
+        // Tỷ lệ di chuyển: (0.5f, 1.0f)
+        _parallaxNode->addChild(bgNear, 0, Vec2(0.5f, 1.0f), Vec2(startX, startY)); 
+    }
+
         float baseX = origin.x + s*vs.width;
         float g     = L.groundTop;
 
+        // auto platform = [&](float xPix, float y, float w){
+        //     return makeSolid(root, Rect(xPix, g+y, w, P_H),
+        //                      Color4F(0.55f,0.58f,0.95f,1));
+        // };
+                const Vec2 PLATFORM_TILE_OFFSET(-15.0f, -22.0f); // Dịch chuyển tất cả tile platform sang phải 10px và xuống 22px
+
+
         auto platform = [&](float xPix, float y, float w){
             return makeSolid(root, Rect(xPix, g+y, w, P_H),
-                             Color4F(0.55f,0.58f,0.95f,1));
+                             Color4F(0.55f,0.58f,0.95f,1),"sprites/tiles/platform_tile.png", PLATFORM_TILE_OFFSET);
         };
+        
+        // // !platform giữa
+        // float platformY = L.groundTop + 70.f;
+        // makeSolid(root, Rect(baseX + vs.width*0.40f, platformY, 220.f, 16.f), Color4F(0.55f,0.58f,0.95f,1), "sprites/tiles/platform_tile.png", PLATFORM_TILE_OFFSET);
 
         int   EHP = HP_BY_SEG[s];
         float ESP = SPD_BY_SEG[s];
@@ -1688,7 +2296,8 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             platform(x3, y3, P_W-10.f);
 
             // trụ cản nho nhỏ cho đỡ trống
-            makeSolid(root, Rect(baseX+vs.width*0.78f, g, 20, 70), Color4F(0.25f,0.8f,0.25f,1));
+            const Vec2 WALL_TILE_OFFSET(0.0f, -85.0f);
+            makeSolid(root, Rect(baseX+vs.width*0.78f, g, 20, 70), Color4F(0.25f,0.8f,0.25f,1),"sprites/tiles/wall_tile.png", WALL_TILE_OFFSET);
 
             coinLine(root, {baseX + 140, g+120}, 4, 36.f);
             placeUpgrade(root, UT, {x2 + P_W*0.5f, g + y2 + 26.f});
@@ -1812,6 +2421,8 @@ File LevelBuilder.h
 #include "cocos2d.h"
 
 class Enemy;
+#include "2d/CCParallaxNode.h"
+
 
 namespace levels {
 
@@ -1841,17 +2452,17 @@ File Chest.cpp
 
 #include "2d/CCDrawNode.h"
 #include "base/ccRandom.h"
-
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 USING_NS_CC;
 
 bool Chest::init() {
     if (!Entity::init()) return false;
 
-    // Hộp đơn giản (debug visual)
-    auto dn = DrawNode::create();
-    dn->drawSolidRect(Vec2(-14, -10), Vec2(14, 10), Color4F(0.6f, 0.35f, 0.1f, 1));
-    dn->drawRect(Vec2(-14, -10), Vec2(14, 10), Color4F::WHITE);
-    addChild(dn);
+    _sprite = Sprite::create("sprites/objects/chest/chest_1.png");
+    _sprite->setScale(1.3f); // tùy chỉnh kích cỡ hiển thị
+    addChild(_sprite, 1);
 
     // Vật lý: item-sensor, chỉ cần contact với Player
     auto body = PhysicsBody::createBox(Size(28, 20));
@@ -1900,6 +2511,9 @@ void Chest::open() {
 File Chest.h
 #pragma once
 #include "game/Entity.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
 class Chest : public Entity {
 public:
@@ -1908,6 +2522,7 @@ public:
 
     // Mở rương: nhả loot xong tự hủy
     void open();
+    cocos2d::Sprite* _sprite = nullptr;
 
 private:
     bool _opened = false;
@@ -1940,9 +2555,7 @@ bool Coin::init(){
     auto animate = Animate::create(animation);
     _sprite->runAction(RepeatForever::create(animate));
 
-    // auto dn = DrawNode::create();
-    // dn->drawSolidCircle(Vec2::ZERO, 10, 0, 24, Color4F(1,0.85f,0,1));
-    // addChild(dn);
+   
     auto body = PhysicsBody::createCircle(10);
     body->setDynamic(false);
     body->setCategoryBitmask(phys::CAT_ITEM);
@@ -2087,16 +2700,34 @@ File Star.cpp
 // Star.cpp
 #include "game/objects/Star.h"
 #include "physics/PhysicsDefs.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 USING_NS_CC;
 Star* Star::create(){ auto p=new(std::nothrow) Star(); if(p && p->init()){p->autorelease(); return p;} CC_SAFE_DELETE(p); return nullptr; }
 bool Star::init(){
     if(!Entity::init()) return false;
     setTagEx(phys::Tag::STAR);
-    auto dn = DrawNode::create();
-    Vec2 pts[5];
-    for(int i=0;i<5;++i){ float a = CC_DEGREES_TO_RADIANS(72*i-90); pts[i]=Vec2(0,14).rotateByAngle(Vec2::ZERO,a); }
-    dn->drawPoly(pts,5,true,Color4F(1,1,0.2f,1));
-    addChild(dn);
+
+
+    _sprite = Sprite::create("sprites/objects/star/star_1.png"); // frame đầu tiên
+    _sprite->setScale(1.7f); // tùy chỉnh kích cỡ hiển thị
+    addChild(_sprite, 1);
+
+    Vector<SpriteFrame*> frames;
+    auto firstSize = _sprite->getContentSize();
+    for (int i = 1; i <= 13; i++) { // giả sử bạn có star_1.png -> star_5.png
+        std::string framePath = StringUtils::format("sprites/objects/star/star_%d.png", i);
+        auto frame = SpriteFrame::create(framePath, Rect(0, 0, firstSize.width, firstSize.height));
+        frame->setOriginalSize(firstSize);
+        frames.pushBack(frame);
+    }
+
+    auto animation = Animation::createWithSpriteFrames(frames, 0.085f); // 0.085s mỗi frame
+    auto animate = Animate::create(animation);
+    _sprite->runAction(RepeatForever::create(animate));
+
+
     auto body = PhysicsBody::createCircle(12);
     body->setDynamic(false);
     body->setCategoryBitmask(phys::CAT_ITEM);
@@ -2114,6 +2745,7 @@ class Star : public Entity {
 public:
     static Star* create();
     bool init() override;
+    cocos2d::Sprite* _sprite = nullptr;
 };
 
 File Upgrade.cpp
@@ -2177,7 +2809,7 @@ bool Upgrade::init(){
 
     _sprite = Sprite::create("sprites/objects/upgrade/upgrade_generic.png");
     if(!_sprite){ _sprite = Sprite::create(); _sprite->setTextureRect(Rect(0,0,20,20)); }
-    _sprite->setScale(1.2f);
+    _sprite->setScale(0.1f);
     addChild(_sprite);
 
     auto body = PhysicsBody::createCircle(12);
@@ -2198,13 +2830,13 @@ void Upgrade::set(Type t){
 void Upgrade::_refreshVisual(){
     const char* name = "upgrade_generic.png";
     switch(_type){
-        case Type::SPEED:      name="upgrade_speed.png"; break;
-        case Type::JUMP:       name="upgrade_jump.png"; break;
-        case Type::DAMAGE:     name="upgrade_damage.png"; break;
-        case Type::BULLET:     name="upgrade_bullet.png"; break;
-        case Type::RANGE:      name="upgrade_range.png"; break;
-        case Type::DOUBLEJUMP: name="upgrade_doublejump.png"; break;
-        case Type::EXTRA_LIFE: name="upgrade_extralife.png"; break;
+        case Type::SPEED:      name="upgrade_speed.png"; break;//
+        case Type::JUMP:       name="upgrade_jump.png"; break;//
+        case Type::DAMAGE:     name="upgrade_damage.png"; break;//
+        case Type::BULLET:     name="upgrade_bullet.png"; break;//
+        case Type::RANGE:      name="upgrade_range.png"; break;//
+        case Type::DOUBLEJUMP: name="upgrade_doublejump.png"; break;//
+        case Type::EXTRA_LIFE: name="upgrade_extralife.png"; break;//
     }
     auto path = std::string("sprites/objects/upgrade/") + name;
     if (FileUtils::getInstance()->isFileExist(path)) _sprite->setTexture(path);
@@ -2617,6 +3249,189 @@ inline phys::Mask all(std::initializer_list<phys::Mask> xs) { return phys::all(x
 
 
 Folder Classes/scenes
+File CreditsScene.cpp
+#include "scenes/CreditsScene.h"
+#include "scenes/MenuScene.h"
+
+#include "cocos2d.h"
+#include "ui/CocosGUI.h"
+
+USING_NS_CC;
+using namespace cocos2d::ui;
+
+Scene* CreditsScene::createScene(){ return CreditsScene::create(); }
+
+bool CreditsScene::init(){
+    if(!Scene::init()) return false;
+
+    auto bg = LayerGradient::create(Color4B(8,10,16,255), Color4B(14,18,26,255));
+    addChild(bg, -1);
+
+    _buildUI();
+    _bindInput();
+    return true;
+}
+
+void CreditsScene::_buildUI(){
+    auto D   = Director::getInstance();
+    auto vs  = D->getVisibleSize();
+    auto org = D->getVisibleOrigin();
+
+    auto title = Label::createWithSystemFont("CREDITS", "Arial", 48);
+    title->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.78f));
+    addChild(title);
+
+    std::string lines =
+        "Game Design: You & Team\n"
+        "Programming: You (& Chat teammate)\n"
+        "Art: Placeholder Pack\n"
+        "Audio: Placeholder Pack\n"
+        "Engine: cocos2d-x 4.x\n\n"
+        "Special Thanks: Friends & Community";
+    auto body = Label::createWithSystemFont(lines, "Arial", 22);
+    body->setAlignment(TextHAlignment::CENTER);
+    body->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.52f));
+    addChild(body);
+
+    auto hint = Label::createWithSystemFont("[ESC] Back to Menu", "Arial", 18);
+    hint->setOpacity(170);
+    hint->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.12f));
+    addChild(hint);
+
+    auto back = Button::create();
+    back->setTitleFontName("Arial"); back->setTitleFontSize(24);
+    back->setTitleText("BACK");
+    back->setScale9Enabled(true); back->ignoreContentAdaptWithSize(false);
+    back->setContentSize({220,54});
+    back->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.28f));
+    auto box = LayerColor::create(Color4B(232,232,236,255));
+    box->setContentSize(back->getContentSize());
+    box->setIgnoreAnchorPointForPosition(false);
+    box->setAnchorPoint({0.5f,0.5f});
+    box->setPosition(back->getContentSize()*0.5f);
+    back->addChild(box, -1);
+    back->addClickEventListener([](Ref*){ Director::getInstance()->popScene(); });
+    addChild(back);
+}
+
+void CreditsScene::_bindInput(){
+    auto l = EventListenerKeyboard::create();
+    l->onKeyReleased = [](EventKeyboard::KeyCode k, Event*){
+        if (k == EventKeyboard::KeyCode::KEY_ESCAPE) Director::getInstance()->popScene();
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
+    _kb = l;
+}
+
+void CreditsScene::onExit(){
+    if (_kb) { _eventDispatcher->removeEventListener(_kb); _kb=nullptr; }
+    Scene::onExit();
+}
+
+File CreditsScene.h
+#pragma once
+#include "cocos2d.h"
+
+class CreditsScene : public cocos2d::Scene {
+public:
+    CREATE_FUNC(CreditsScene);
+    static cocos2d::Scene* createScene();
+
+    bool init() override;
+    void onExit() override;
+
+private:
+    void _buildUI();
+    void _bindInput();
+
+    cocos2d::EventListenerKeyboard* _kb = nullptr;
+};
+
+File EndScene.cpp
+#include "scenes/EndScene.h"
+#include "scenes/MenuScene.h"
+
+#include "cocos2d.h"
+#include "ui/CocosGUI.h"
+
+USING_NS_CC;
+using namespace cocos2d::ui;
+
+EndScene* EndScene::createWithText(const std::string& msg){
+    auto p = new (std::nothrow) EndScene();
+    if (p && p->initWithText(msg)) { p->autorelease(); return p; }
+    CC_SAFE_DELETE(p); return nullptr;
+}
+
+bool EndScene::initWithText(const std::string& msg){
+    if(!Scene::init()) return false;
+
+    auto bg = LayerGradient::create(Color4B(6,10,14,255), Color4B(14,22,30,255));
+    addChild(bg, -1);
+
+    _buildUI(msg);
+
+    // ESC/ENTER -> về menu
+    auto l = EventListenerKeyboard::create();
+    l->onKeyReleased = [](EventKeyboard::KeyCode k, Event*){
+        if (k==EventKeyboard::KeyCode::KEY_ESCAPE ||
+            k==EventKeyboard::KeyCode::KEY_ENTER ||
+            k==EventKeyboard::KeyCode::KEY_KP_ENTER) {
+            Director::getInstance()->replaceScene(
+                TransitionFade::create(0.2f, MenuScene::createScene()));
+        }
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
+    return true;
+}
+
+void EndScene::_buildUI(const std::string& msg){
+    auto D   = Director::getInstance();
+    auto vs  = D->getVisibleSize();
+    auto org = D->getVisibleOrigin();
+
+    auto t = Label::createWithSystemFont(msg.empty() ? "THE END" : msg, "Arial", 48);
+    t->setAlignment(TextHAlignment::CENTER);
+    t->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.55f));
+    addChild(t);
+
+    auto hint = Label::createWithSystemFont("[Enter] Back to Menu", "Arial", 20);
+    hint->setOpacity(170);
+    hint->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.18f));
+    addChild(hint);
+
+    auto back = Button::create();
+    back->setTitleFontName("Arial"); back->setTitleFontSize(24);
+    back->setTitleText("BACK TO MENU");
+    back->setScale9Enabled(true); back->ignoreContentAdaptWithSize(false);
+    back->setContentSize({300,56});
+    back->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.32f));
+    auto box = LayerColor::create(Color4B(232,232,236,255));
+    box->setContentSize(back->getContentSize());
+    box->setIgnoreAnchorPointForPosition(false);
+    box->setAnchorPoint({0.5f,0.5f});
+    box->setPosition(back->getContentSize()*0.5f);
+    back->addChild(box, -1);
+    back->addClickEventListener([](Ref*){
+        Director::getInstance()->replaceScene(
+            TransitionFade::create(0.2f, MenuScene::createScene()));
+    });
+    addChild(back);
+}
+
+File EndScene.h
+#pragma once
+#include "cocos2d.h"
+
+class EndScene : public cocos2d::Scene {
+public:
+    static EndScene* createWithText(const std::string& msg);
+    virtual bool initWithText(const std::string& msg);
+
+private:
+    void _buildUI(const std::string& msg);
+};
+
 File GameScene.cpp
 #include "scenes/GameScene.h"
 #include "ui/HUDLayer.h"
@@ -2637,6 +3452,12 @@ File GameScene.cpp
 #include <algorithm>
 #include <vector>
 
+#include "ui/PauseLayer.h"
+#include "scenes/MenuScene.h"
+
+// Âm thanh
+#include "audio/Sound.h"
+
 USING_NS_CC;
 
 // ---------------------------
@@ -2651,6 +3472,9 @@ static bool hasCat(cocos2d::Node* n, phys::Mask catMask){
     auto* body = n->getPhysicsBody();
     return body && ((static_cast<phys::Mask>(body->getCategoryBitmask()) & catMask) != 0u);
 }
+
+// SFX pickup gọn, nếu file thiếu AudioEngine sẽ bỏ qua, không crash
+static inline void playPickupSfx() { snd::sfxCoin(); }
 
 // ======================================================================
 
@@ -2671,7 +3495,7 @@ bool GameScene::init() {
     buildUICamera();
     buildHUD();
 
-    // build map 5 mini
+    // build map
     auto L = levels::buildLevel1(this, _vs, _origin);
     _groundTop    = L.groundTop;
     _segmentCount = L.segments;
@@ -2721,8 +3545,8 @@ bool GameScene::init() {
         auto body = PhysicsBody::createBox(Size(6, _vs.height));
         body->setDynamic(false);
         body->setCategoryBitmask((int)phys::CAT_GATE);
-        body->setCollisionBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));   // thay dòng cũ chỉ có PLAYER
-        body->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY)); // thay dòng cũ chỉ có PLAYER
+        body->setCollisionBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));
+        body->setContactTestBitmask((int)(phys::CAT_PLAYER | phys::CAT_ENEMY));
 
         n->addComponent(body);
         n->setPosition({x, _groundTop + _vs.height*0.5f});
@@ -2754,9 +3578,14 @@ void GameScene::onEnter() {
     if (!_world && getScene()) _world = getScene()->getPhysicsWorld();
     CCASSERT(_world, "GameScene must be under a Scene with physics");
     _world->setGravity(Vec2(0, -980));
+
+    // BGM: nếu file không tồn tại thì AudioEngine bỏ qua, không crash
+    snd::playBgm("audio/bgm_main.mp3", true);
 }
 
-void GameScene::onExit() { Layer::onExit(); }
+void GameScene::onExit() {
+    Layer::onExit();
+}
 
 // ======================================================================
 // UI
@@ -2779,34 +3608,70 @@ void GameScene::buildHUD() {
 // ======================================================================
 void GameScene::_bindInput() {
     auto l = EventListenerKeyboard::create();
+
+    // -------------- Key Pressed --------------
     l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*) {
+        // Đang ở màn endflow
         if (_gameOver || _gameWin) {
-            if (c==EventKeyboard::KeyCode::KEY_R && _gameOver) _restartLevel();
-            if ((c==EventKeyboard::KeyCode::KEY_ENTER || c==EventKeyboard::KeyCode::KEY_KP_ENTER) && _gameWin) _returnMenu();
+            if (_gameOver && c == EventKeyboard::KeyCode::KEY_R) {
+                _restartLevel();
+            }
+            if (_gameWin && (c == EventKeyboard::KeyCode::KEY_ENTER ||
+                             c == EventKeyboard::KeyCode::KEY_KP_ENTER)) {
+                _returnMenu();
+            }
             return;
         }
+
         if (!_player) return;
+
         switch (c) {
+            case EventKeyboard::KeyCode::KEY_ESCAPE: {
+                // mở PauseOverlay nếu chưa có
+                if (!this->getChildByName("PauseOverlay")) {
+                    auto p = PauseLayer::create();
+                    p->setName("PauseOverlay");
+                    this->addChild(p, 10000);
+                }
+                break;
+            }
             case EventKeyboard::KeyCode::KEY_A:
-            case EventKeyboard::KeyCode::KEY_LEFT_ARROW:  _player->setMoveDir({-1.f,0.f}); break;
+            case EventKeyboard::KeyCode::KEY_LEFT_ARROW:
+                _player->setMoveDir({-1.f, 0.f}); break;
+
             case EventKeyboard::KeyCode::KEY_D:
-            case EventKeyboard::KeyCode::KEY_RIGHT_ARROW: _player->setMoveDir({ 1.f,0.f}); break;
+            case EventKeyboard::KeyCode::KEY_RIGHT_ARROW:
+                _player->setMoveDir({ 1.f, 0.f}); break;
+
             case EventKeyboard::KeyCode::KEY_W:
             case EventKeyboard::KeyCode::KEY_UP_ARROW:
-            case EventKeyboard::KeyCode::KEY_SPACE: _player->jump(); break;
-            case EventKeyboard::KeyCode::KEY_J: _player->doShoot(); break;
-            case EventKeyboard::KeyCode::KEY_K: _player->doSlash(); break;
+            case EventKeyboard::KeyCode::KEY_SPACE:
+                _player->jump(); break;
+
+            case EventKeyboard::KeyCode::KEY_J:
+                _player->doShoot(); break;
+
+            case EventKeyboard::KeyCode::KEY_K:
+                _player->doSlash(); break;
+
             default: break;
         }
     };
+
+    // -------------- Key Released --------------
     l->onKeyReleased = [this](EventKeyboard::KeyCode c, Event*) {
         if (_gameOver || _gameWin || !_player) return;
-        if (c==EventKeyboard::KeyCode::KEY_A || c==EventKeyboard::KeyCode::KEY_LEFT_ARROW ||
-            c==EventKeyboard::KeyCode::KEY_D || c==EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
-            _player->setMoveDir({0.f,0.f});
+
+        if (c == EventKeyboard::KeyCode::KEY_A ||
+            c == EventKeyboard::KeyCode::KEY_LEFT_ARROW ||
+            c == EventKeyboard::KeyCode::KEY_D ||
+            c == EventKeyboard::KeyCode::KEY_RIGHT_ARROW) {
+            _player->setMoveDir({0.f, 0.f});
+        }
     };
+
     _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
-    _kb = l;
+    _kb = l; // lưu listener
 }
 
 // ======================================================================
@@ -2833,6 +3698,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         segByItem = std::max(0, std::min(segByItem, _segmentCount-1));
 
         if (auto star = dynamic_cast<Star*>(item)) {
+            playPickupSfx(); // gom sfx coin cho mọi pickup
             _starsSeg[segByItem] += 1;
             _setStars(_starsHave+1, _starsNeed);
             _addScore(50);
@@ -2852,6 +3718,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto coin = dynamic_cast<Coin*>(item)) {
+            playPickupSfx();
             _addScore(10);
             item->removeFromParent();
             return false;
@@ -2860,6 +3727,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         if (auto up = dynamic_cast<Upgrade*>(item)) {
             using T = Upgrade::Type;
             const auto t = up->type();
+            playPickupSfx();
             _addScore(25);
 
             if (_player) {
@@ -2888,6 +3756,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto chest = dynamic_cast<Chest*>(item)) {
+            playPickupSfx();
             chest->open();
             return false;
         }
@@ -3067,7 +3936,10 @@ void GameScene::_checkWin(){
     }
 }
 void GameScene::_restartLevel(){ Director::getInstance()->replaceScene(GameScene::createScene()); }
-void GameScene::_returnMenu(){ Director::getInstance()->replaceScene(TransitionFade::create(0.25f, Scene::create())); }
+void GameScene::_returnMenu(){
+    Director::getInstance()->replaceScene(TransitionFade::create(0.25f, MenuScene::createScene()));
+}
+
 void GameScene::_showOverlay(const std::string& text){
     if(!_overlay){
         _overlay = Label::createWithSystemFont(text, "Arial", 46);
@@ -3087,6 +3959,7 @@ File GameScene.h
 #include "game/Player.h"
 #include "game/Enemy.h"
 #include "game/map/LevelBuilder.h"
+#include "2d/CCParallaxNode.h"
 
 class HUDLayer;
 
@@ -3160,50 +4033,179 @@ private:
 File MenuScene.cpp
 #include "scenes/MenuScene.h"
 #include "scenes/GameScene.h"
-USING_NS_CC;
+
+// Chỉ 2 include này là đủ cho mọi thứ trong file
+#include "cocos2d.h"
+#include "ui/CocosGUI.h"
+
+using namespace cocos2d;
+using namespace cocos2d::ui;
+
+// --- Bật/tắt Settings & Credits theo macro (tránh __has_include) ---
+#ifndef USE_SETTINGS_SCENE
+#define USE_SETTINGS_SCENE 0   // đổi thành 1 nếu bạn đã có scenes/SettingsScene.h
+#endif
+#ifndef USE_CREDITS_SCENE
+#define USE_CREDITS_SCENE 0    // đổi thành 1 nếu bạn đã có scenes/CreditsScene.h
+#endif
+
+#if USE_SETTINGS_SCENE
+  #include "scenes/SettingsScene.h"
+#endif
+#if USE_CREDITS_SCENE
+  #include "scenes/CreditsScene.h"
+#endif
+// -------------------------------------------------------------------
 
 Scene* MenuScene::createScene(){ return MenuScene::create(); }
 
 bool MenuScene::init(){
     if(!Scene::init()) return false;
 
-    auto vs = Director::getInstance()->getVisibleSize();
-    auto origin = Director::getInstance()->getVisibleOrigin();
-
-    auto title = Label::createWithSystemFont("MyGame", "Arial", 48);
-    title->setPosition(origin + Vec2(vs.width/2, vs.height*0.65f));
-    auto hint  = Label::createWithSystemFont("[ENTER] New Game   |   [ESC] Quit","Arial",24);
-    hint->setPosition(origin + Vec2(vs.width/2, vs.height*0.45f));
-    addChild(title); addChild(hint);
-
-    // Dự phòng: nếu có Menu* close từ template bị add nhầm
-    for (auto ch : getChildren())
-        if (auto m = dynamic_cast<Menu*>(ch)) m->setEnabled(false);
-
+    _buildUI();
+    _disableLegacyMenus();  // nếu template cũ có Menu* thì vô hiệu
     _bindInput();
     return true;
 }
 
+void MenuScene::_buildUI(){
+    auto* D  = Director::getInstance();
+    auto  vs = D->getVisibleSize();
+    auto  org= D->getVisibleOrigin();
+
+    // Nền gradient nhẹ (dùng class từ cocos2d.h)
+    auto bg = LayerGradient::create(Color4B(8,12,20,255), Color4B(16,20,28,255));
+    addChild(bg, -10);
+
+    auto title = Label::createWithSystemFont("FATERIAL", "Arial", 52);
+    title->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.74f));
+    title->setOpacity(0);
+    title->runAction(FadeIn::create(0.25f));
+    addChild(title);
+
+    auto tagline = Label::createWithSystemFont(
+        "Mini-zones • Stars • Boss • Bullet vs Projectile",
+        "Arial", 18);
+    tagline->setOpacity(180);
+    tagline->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.68f));
+    addChild(tagline);
+
+    // helper tạo nút phẳng (không cần sprite ngoài)
+// helper tạo nút phẳng (không cần sprite ngoài)
+    auto makeBtn = [&](const std::string& text, float y, std::function<void()> cb){
+        auto btn = ui::Button::create();
+        btn->setTitleFontName("Arial");
+        btn->setTitleFontSize(26);
+        btn->setTitleText(text);
+
+        // QUAN TRỌNG: để size có hiệu lực với UI::Widget
+        btn->setScale9Enabled(true);
+        btn->ignoreContentAdaptWithSize(false);
+        btn->setContentSize(Size(300, 56));
+
+        // anchor ở giữa và đặt đúng tâm
+        btn->setAnchorPoint(Vec2(0.5f, 0.5f));
+        auto* D = cocos2d::Director::getInstance();
+        auto  vs = D->getVisibleSize();
+        auto  org= D->getVisibleOrigin();
+        btn->setPosition(org + Vec2(vs.width * 0.5f, y));
+        btn->setZoomScale(0.06f);
+
+        // NỀN hộp sáng — căn GIỮA nút (không để (0,0) nữa)
+        auto box = LayerColor::create(Color4B(232,232,236,255));
+        box->setContentSize(btn->getContentSize());
+        box->setIgnoreAnchorPointForPosition(false);
+        box->setAnchorPoint(Vec2(0.5f, 0.5f));
+        box->setPosition(btn->getContentSize() * 0.5f);
+        btn->addChild(box, -1);
+
+        btn->addClickEventListener([cb](Ref*){ cb(); });
+        addChild(btn);
+        return btn;
+    };
+
+
+    makeBtn("PLAY",     vs.height*0.50f, [this]{ _goGame();     });
+    makeBtn("SETTINGS", vs.height*0.40f, [this]{ _goSettings(); });
+    makeBtn("CREDITS",  vs.height*0.30f, [this]{ _goCredits();  });
+    makeBtn("QUIT",     vs.height*0.20f, [this]{ _quit();       });
+
+    auto hint = Label::createWithSystemFont(
+        "ENTER=Play • S=Settings • C=Credits • ESC=Quit",
+        "Arial", 18);
+    hint->setOpacity(170);
+    hint->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.09f));
+    addChild(hint);
+}
+
+void MenuScene::_disableLegacyMenus(){
+    for (auto ch : getChildren())
+        if (auto m = dynamic_cast<Menu*>(ch)) m->setEnabled(false);
+}
+
 void MenuScene::_bindInput(){
     auto l = EventListenerKeyboard::create();
-    l->onKeyPressed = [this](EventKeyboard::KeyCode c, Event*){
-        if (c==EventKeyboard::KeyCode::KEY_ENTER || c==EventKeyboard::KeyCode::KEY_KP_ENTER) _goGame();
-        else if (c==EventKeyboard::KeyCode::KEY_ESCAPE) Director::getInstance()->end();
+    l->onKeyReleased = [this](EventKeyboard::KeyCode k, Event*){
+        switch(k){
+            case EventKeyboard::KeyCode::KEY_ENTER:
+            case EventKeyboard::KeyCode::KEY_KP_ENTER: _goGame(); break;
+            case EventKeyboard::KeyCode::KEY_S:         _goSettings(); break;
+            case EventKeyboard::KeyCode::KEY_C:         _goCredits();  break;
+            case EventKeyboard::KeyCode::KEY_ESCAPE:    _quit();       break;
+            default: break;
+        }
     };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
-    _kb = l;  // lưu lại để gỡ
+    _kb = l;
 }
 
 void MenuScene::onExit(){
-    if (_kb) {
-        _eventDispatcher->removeEventListener(_kb);
-        _kb = nullptr;
-    }
+    if (_kb) { _eventDispatcher->removeEventListener(_kb); _kb = nullptr; }
     Scene::onExit();
 }
 
+// ----------------- Actions -----------------
 void MenuScene::_goGame(){
     Director::getInstance()->replaceScene(TransitionFade::create(0.25f, GameScene::createScene()));
+}
+void MenuScene::_goSettings(){
+#if USE_SETTINGS_SCENE
+    Director::getInstance()->pushScene(TransitionFade::create(0.20f, SettingsScene::create()));
+#else
+    _toastWIP("Settings scene chưa được thêm (WIP). Đặt USE_SETTINGS_SCENE=1 nếu đã có.");
+#endif
+}
+void MenuScene::_goCredits(){
+#if USE_CREDITS_SCENE
+    Director::getInstance()->pushScene(TransitionFade::create(0.20f, CreditsScene::create()));
+#else
+    _toastWIP("Credits scene chưa được thêm (WIP). Đặt USE_CREDITS_SCENE=1 nếu đã có.");
+#endif
+}
+void MenuScene::_quit(){
+    Director::getInstance()->end();
+}
+
+// ----------------- Helper -----------------
+void MenuScene::_toastWIP(const std::string& msg){
+    auto* D = Director::getInstance();
+    auto vs  = D->getVisibleSize();
+    auto org = D->getVisibleOrigin();
+
+    auto toast = Label::createWithSystemFont(msg, "Arial", 20);
+    toast->setTextColor(Color4B(255,240,180,255));
+    toast->enableOutline(Color4B(0,0,0,160), 2);
+    toast->setOpacity(0);
+    toast->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.12f));
+    addChild(toast, 999);
+
+    toast->runAction(Sequence::create(
+        FadeIn::create(0.12f),
+        DelayTime::create(1.1f),
+        FadeOut::create(0.25f),
+        RemoveSelf::create(),
+        nullptr
+    ));
 }
 
 File MenuScene.h
@@ -3214,14 +4216,199 @@ class MenuScene : public cocos2d::Scene {
 public:
     CREATE_FUNC(MenuScene);
     static cocos2d::Scene* createScene();
+
     bool init() override;
-    void onExit() override;                // <-- thêm
+    void onExit() override;
 
 private:
+    // UI + input
+    void _buildUI();
     void _bindInput();
-    void _goGame();
 
-    cocos2d::EventListenerKeyboard* _kb = nullptr;  // <-- thêm
+    // actions
+    void _goGame();
+    void _goSettings();
+    void _goCredits();
+    void _quit();
+
+    // helper
+    void _disableLegacyMenus();
+    void _toastWIP(const std::string& msg);
+
+    cocos2d::EventListenerKeyboard* _kb = nullptr; // gỡ listener khi rời scene
+};
+
+File SettingsScene.cpp
+#include "scenes/SettingsScene.h"
+#include "scenes/MenuScene.h"
+
+#include "cocos2d.h"
+#include "ui/CocosGUI.h"
+
+USING_NS_CC;
+using namespace cocos2d::ui;
+
+Scene* SettingsScene::createScene(){ return SettingsScene::create(); }
+
+bool SettingsScene::init(){
+    if(!Scene::init()) return false;
+
+    // nền
+    auto bg = LayerGradient::create(Color4B(10,14,22,255), Color4B(18,24,32,255));
+    addChild(bg, -1);
+
+    _loadValues();
+    _buildUI();
+    _bindInput();
+    return true;
+}
+
+void SettingsScene::_buildUI(){
+    auto D   = Director::getInstance();
+    auto vs  = D->getVisibleSize();
+    auto org = D->getVisibleOrigin();
+
+    auto title = Label::createWithSystemFont("SETTINGS","Arial",48);
+    title->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.78f));
+    addChild(title);
+
+    auto hint = Label::createWithSystemFont("[ESC] Back to Menu", "Arial", 18);
+    hint->setOpacity(170);
+    hint->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.12f));
+    addChild(hint);
+
+    // ---- THAY THẾ HẲN HÀM mkRow BẰNG BẢN NÀY ----
+    auto mkRow = [&](const std::string& name, float y, float* pv, bool isMusic){
+        auto lbl = Label::createWithSystemFont(name, "Arial", 26);
+        lbl->setAnchorPoint({1,0.5f});
+        lbl->setPosition(org + Vec2(vs.width*0.5f - 120, y));
+        addChild(lbl);
+
+        auto valLbl = Label::createWithSystemFont(StringUtils::format("%d%%", (int)roundf((*pv)*100)), "Arial", 24);
+        valLbl->setAnchorPoint({0.5f,0.5f});
+        valLbl->setPosition(org + Vec2(vs.width*0.5f, y));
+        addChild(valLbl);
+
+        auto makeBtn = [&](const char* text, const Vec2& pos, std::function<void()> onClick){
+            auto b = ui::Button::create();
+            b->setTitleFontName("Arial"); b->setTitleFontSize(28);
+            b->setTitleText(text);
+            b->setScale9Enabled(true);
+            b->ignoreContentAdaptWithSize(false);
+            b->setContentSize({52,52});
+            b->setPosition(pos);
+            auto box = LayerColor::create(Color4B(232,232,236,255));
+            box->setContentSize(b->getContentSize());
+            box->setIgnoreAnchorPointForPosition(false);
+            box->setAnchorPoint({0.5f,0.5f});
+            box->setPosition(b->getContentSize()*0.5f);
+            b->addChild(box, -1);
+            b->addClickEventListener([onClick](Ref*){ onClick(); });
+            addChild(b);
+            return b;
+        };
+
+        // Nút -
+        makeBtn("-", org + Vec2(vs.width*0.5f + 120, y), [this, pv, valLbl, isMusic](){
+            *pv = clampf((*pv) - 0.05f, 0.f, 1.f);
+            valLbl->setString(StringUtils::format("%d%%", (int)roundf((*pv)*100)));
+            if (isMusic) _applyMusic(*pv); else _applySfx(*pv);
+            _saveValues();
+        });
+
+        // Nút +
+        makeBtn("+", org + Vec2(vs.width*0.5f + 190, y), [this, pv, valLbl, isMusic](){
+            *pv = clampf((*pv) + 0.05f, 0.f, 1.f);
+            valLbl->setString(StringUtils::format("%d%%", (int)roundf((*pv)*100)));
+            if (isMusic) _applyMusic(*pv); else _applySfx(*pv);
+            _saveValues();
+        });
+    };
+
+    // ---- THAY 2 LỜI GỌI CŨ ----
+    // mkRow("Music", vs.height*0.58f, _music);
+    // mkRow("SFX",   vs.height*0.46f, _sfx);
+
+    // ---- BẰNG 2 LỜI GỌI MỚI DÙNG CON TRỎ ----
+    mkRow("Music", vs.height*0.58f, &_music, true);
+    mkRow("SFX",   vs.height*0.46f, &_sfx,   false);
+
+
+    // Nút Back
+    auto back = Button::create();
+    back->setTitleFontName("Arial"); back->setTitleFontSize(24);
+    back->setTitleText("BACK");
+    back->setScale9Enabled(true);
+    back->ignoreContentAdaptWithSize(false);
+    back->setContentSize({220,54});
+    back->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.28f));
+    auto box = LayerColor::create(Color4B(232,232,236,255));
+    box->setContentSize(back->getContentSize());
+    box->setIgnoreAnchorPointForPosition(false);
+    box->setAnchorPoint({0.5f,0.5f});
+    box->setPosition(back->getContentSize()*0.5f);
+    back->addChild(box, -1);
+    back->addClickEventListener([](Ref*){
+        Director::getInstance()->popScene();
+    });
+    addChild(back);
+}
+
+void SettingsScene::_bindInput(){
+    auto l = EventListenerKeyboard::create();
+    l->onKeyReleased = [](EventKeyboard::KeyCode k, Event*){
+        if (k == EventKeyboard::KeyCode::KEY_ESCAPE) {
+            Director::getInstance()->popScene();
+        }
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(l, this);
+    _kb = l;
+}
+
+void SettingsScene::onExit(){
+    if (_kb) { _eventDispatcher->removeEventListener(_kb); _kb=nullptr; }
+    Scene::onExit();
+}
+
+void SettingsScene::_loadValues(){
+    auto ud = UserDefault::getInstance();
+    _music = clampf(ud->getFloatForKey("cfg.music", 0.8f), 0.f, 1.f);
+    _sfx   = clampf(ud->getFloatForKey("cfg.sfx",   0.8f), 0.f, 1.f);
+}
+void SettingsScene::_saveValues(){
+    auto ud = UserDefault::getInstance();
+    ud->setFloatForKey("cfg.music", _music);
+    ud->setFloatForKey("cfg.sfx",   _sfx);
+    ud->flush();
+}
+void SettingsScene::_applyMusic(float v){ CCLOG("Music volume=%.2f (saved only)", v); }
+void SettingsScene::_applySfx(float v){   CCLOG("SFX   volume=%.2f (saved only)", v); }
+
+File SettingsScene.h
+#pragma once
+#include "cocos2d.h"
+
+class SettingsScene : public cocos2d::Scene {
+public:
+    CREATE_FUNC(SettingsScene);
+    static cocos2d::Scene* createScene();
+
+    bool init() override;
+    void onExit() override;
+
+private:
+    void _buildUI();
+    void _bindInput();
+    void _loadValues();
+    void _saveValues();
+
+    void _applyMusic(float v); // chỉ lưu vào UserDefault (không gọi AudioEngine)
+    void _applySfx(float v);
+
+    float _music = 0.8f;
+    float _sfx   = 0.8f;
+
+    cocos2d::EventListenerKeyboard* _kb = nullptr;
 };
 
 
@@ -3433,6 +4620,128 @@ private:
     void _layout();
     void _layoutBuffs();
     void _redrawHP();
+};
+
+File PauseLayer.cpp
+#include "ui/PauseLayer.h"
+#include "cocos2d.h"
+#include "ui/CocosGUI.h"
+
+#include "scenes/MenuScene.h"
+#include "scenes/SettingsScene.h" // nếu chưa có, có thể comment 2 dòng liên quan
+#include "scenes/GameScene.h"
+
+USING_NS_CC;
+using namespace cocos2d::ui;
+
+PauseLayer* PauseLayer::create() {
+    auto p = new (std::nothrow) PauseLayer();
+    if (p && p->init()) { p->autorelease(); return p; }
+    CC_SAFE_DELETE(p); return nullptr;
+}
+
+bool PauseLayer::init() {
+    if (!LayerColor::initWithColor(Color4B(0,0,0,156))) return false;
+
+    auto vs  = Director::getInstance()->getVisibleSize();
+    auto org = Director::getInstance()->getVisibleOrigin();
+    setContentSize(vs);
+    setIgnoreAnchorPointForPosition(false);
+    setPosition(org);
+    setLocalZOrder(9999);
+
+    _buildUI();
+
+    // ESC = Resume
+    auto kb = EventListenerKeyboard::create();
+    kb->onKeyReleased = [this](EventKeyboard::KeyCode k, Event*){
+        if (k == EventKeyboard::KeyCode::KEY_ESCAPE) this->removeFromParent();
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(kb, this);
+
+    // chặn input xuyên xuống gameplay
+    auto touch = EventListenerTouchOneByOne::create();
+    touch->setSwallowTouches(true);
+    touch->onTouchBegan = [](Touch*, Event*){ return true; };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(touch, this);
+    return true;
+}
+
+void PauseLayer::_buildUI() {
+    auto vs  = Director::getInstance()->getVisibleSize();
+    auto org = Director::getInstance()->getVisibleOrigin();
+
+    auto title = Label::createWithSystemFont("PAUSED", "Arial", 44);
+    title->setPosition(org + Vec2(vs.width*0.5f, vs.height*0.70f));
+    addChild(title);
+
+    auto makeBtn = [&](const std::string& text, float y, std::function<void()> cb){
+        auto btn = Button::create();
+        btn->setTitleFontName("Arial");
+        btn->setTitleFontSize(26);
+        btn->setTitleText(text);
+        btn->setScale9Enabled(true);
+        btn->ignoreContentAdaptWithSize(false);
+        btn->setContentSize(Size(300,56));
+        btn->setAnchorPoint(Vec2(0.5f,0.5f));
+        btn->setPosition(org + Vec2(vs.width*0.5f, y));
+        btn->setZoomScale(0.06f);
+
+        auto box = LayerColor::create(Color4B(232,232,236,255));
+        box->setContentSize(btn->getContentSize());
+        box->setIgnoreAnchorPointForPosition(false);
+        box->setAnchorPoint(Vec2(0.5f,0.5f));
+        box->setPosition(btn->getContentSize()*0.5f);
+        btn->addChild(box, -1);
+
+        btn->addClickEventListener([cb](Ref*){ cb(); });
+        addChild(btn);
+    };
+
+    makeBtn("RESUME  [ESC]", vs.height*0.54f, [this]{ this->removeFromParent(); });
+    makeBtn("RESTART",       vs.height*0.44f, []{
+        Director::getInstance()->resume();
+        Director::getInstance()->replaceScene(TransitionFade::create(0.2f, GameScene::createScene()));
+    });
+    makeBtn("SETTINGS",      vs.height*0.34f, []{
+        // nếu chưa có SettingsScene, comment dòng dưới
+        Director::getInstance()->pushScene(TransitionFade::create(0.2f, SettingsScene::create()));
+    });
+    makeBtn("MAIN MENU",     vs.height*0.24f, []{
+        Director::getInstance()->resume();
+        Director::getInstance()->replaceScene(TransitionFade::create(0.2f, MenuScene::createScene()));
+    });
+    makeBtn("QUIT",          vs.height*0.14f, []{
+        Director::getInstance()->end();
+    });
+}
+
+void PauseLayer::onEnter() {
+    LayerColor::onEnter();
+    // Pause “cứng” – dừng scheduler + actions cho mọi thứ bên dưới
+    Director::getInstance()->pause();
+}
+
+void PauseLayer::onExit() {
+    // Resume khi đóng overlay
+    Director::getInstance()->resume();
+    LayerColor::onExit();
+}
+
+File PauseLayer.h
+#pragma once
+#include "cocos2d.h"
+
+class PauseLayer : public cocos2d::LayerColor {
+public:
+    static PauseLayer* create();
+    bool init() override;
+
+    void onEnter() override;  // pause toàn game
+    void onExit()  override;  // resume toàn game
+
+private:
+    void _buildUI();
 };
 
 
