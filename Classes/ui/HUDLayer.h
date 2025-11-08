@@ -8,35 +8,34 @@ public:
     CREATE_FUNC(HUDLayer);
     bool init() override;
     void onEnter() override;
+    void update(float dt) override; // tự bám camera mặc định
 
-    // ===== API từ GameScene/Player =====
-    void setLives(int v);                   // số mạng (hiển thị ❤)
-    void setScore(int v);                   // điểm
-    void setStars(int have, int need);      // sao đã nhặt / cần
-    void setZone(int cur, int total);       // mini hiện tại / tổng
-    void setHP(int cur, int max);           // HP hiện tại / tối đa (vẽ thanh đỏ)
+    // ==== API (GameScene/Player gọi vào) ====
+    void setLives(int v);
+    void setScore(int v);
+    void setStars(int have, int need);
+    void setZone(int cur, int total);
+    void setHP(int cur, int max);
 
-    // Buff UI: trả về id để remove thủ công nếu muốn
+    // Buffs
     int  addBuff(const std::string& name, float durationSec);
     void removeBuff(int id);
-
-    // Mỗi frame update bar buff
-    void tick(float dt);
+    void tick(float dt); // giảm thời gian buff + redraw bar
 
 private:
-    // ----- Texts -----
-    cocos2d::Label* _lLives = nullptr;
-    cocos2d::Label* _lScore = nullptr;
-    cocos2d::Label* _lStars = nullptr;
-    cocos2d::Label* _lZone  = nullptr;
+    // Text
+    cocos2d::Label* _lLives = nullptr; // góc trái trên
+    cocos2d::Label* _lScore = nullptr; // góc phải trên
+    cocos2d::Label* _lStars = nullptr; // góc phải trên (dưới Score)
+    cocos2d::Label* _lZone  = nullptr; // góc phải trên (dưới Stars)
 
-    // ----- HP bar -----
+    // HP
     cocos2d::DrawNode* _hpBarBG = nullptr;
     cocos2d::DrawNode* _hpBarFG = nullptr;
     cocos2d::Label*    _lHPText = nullptr;
     int _hpCur = 100, _hpMax = 100;
 
-    // ----- Buff strip -----
+    // Buff strip
     struct BuffUI {
         int id = 0;
         cocos2d::Node*     root = nullptr;
@@ -47,14 +46,15 @@ private:
     std::vector<BuffUI> _buffs;
     int _nextBuffId = 1;
 
-    // ----- State -----
+    // State mirror (không bắt buộc nhưng tiện)
     int _lives = 3;
     int _score = 0;
     int _starsHave = 0, _starsNeed = 0;
     int _zoneCur = 1, _zoneTotal = 1;
 
-    // ----- Layout helpers -----
-    void _layout();         // đặt vị trí các label/khung
-    void _layoutBuffs();    // xếp hàng buff strip
-    void _redrawHP();       // vẽ lại thanh HP theo _hpCur/_hpMax
+    // Layout helpers
+    void _layout();         // đặt vị trí các label/thanh
+    void _layoutBuffs();    // buff strip
+    void _redrawHP();       // vẽ lại thanh HP
+    void _anchorToCamera(); // đặt origin HUD trùng đáy-trái màn hình hiện tại
 };
