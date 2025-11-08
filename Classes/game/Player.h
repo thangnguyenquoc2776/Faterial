@@ -98,4 +98,7 @@ private:
     // Buff runtime (đếm ngược & revert)
     struct ActiveBuff { int type; float remain; float factor; int hudId; };
     std::vector<ActiveBuff> _buffs;
+    
+    bool _wasRunning = false; // để phát hiện lúc bắt đầu/ kết thúc chạy
+
 };

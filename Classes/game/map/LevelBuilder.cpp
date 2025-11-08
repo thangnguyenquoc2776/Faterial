@@ -138,77 +138,135 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
     L.playerSpawn  = origin + Vec2(80.f, L.groundTop + 40.f);
 
     // ground dài
-    // makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 24.f), Color4F(0.2f,0.85f,0.2f,1));
-    const Vec2 GROUND_TILE_OFFSET(0.0f, -65.0f); // Dịch chuyển tất cả tile ground xuống 75px
-    makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 24.f),
-              Color4F(0.20f,0.85f,0.20f,1), "sprites/tiles/ground_tile.png", GROUND_TILE_OFFSET);
+    const Vec2 GROUND_TILE_OFFSET(0.0f, -30.5f); // Dịch chuyển tất cả tile ground xuống 75px
+    makeSolid(root, Rect(origin.x, origin.y, vs.width*L.segments, 30.f),
+              Color4F(0.20f,0.85f,0.20f,1), "sprites/tiles/ground_tile2.png", GROUND_TILE_OFFSET);
     
     const float JUMP_DY = 70.f;
     const float GAP_X   = 130.f;
     const float P_W     = 180.f;
     const float P_H     = 16.f;
 
-    for (int s=0; s<L.segments; ++s) {
-            _parallaxNode = ParallaxNode::create();
+     _parallaxNode = ParallaxNode::create();
     // Đặt Z-order rất thấp để nó nằm sau tất cả map và đối tượng.
     // addChild(_parallaxNode, -100); 
     root->addChild(_parallaxNode, -100);
 
     // LỚP BACKGROUND 1 (bgFar): DUY NHẤT VÀ PHỦ ĐẦY MÀN HÌNH
-    auto bgFar = Sprite::create("sprites/backgrounds/background.png"); 
-    if (bgFar) {
-        float bgW = bgFar->getContentSize().width;
-        float bgH = bgFar->getContentSize().height;
-        
-        float scaleX = _vs.width / bgW;
-        float scaleY = _vs.height / bgH;
-        float scale = std::max(scaleX, scaleY); // Phóng to để che phủ cả width và height
-        
-        // Căn tâm Sprite để đặt ở giữa màn hình
-        bgFar->setAnchorPoint(Vec2(0.5f, 0.5f)); 
-        bgFar->setScale(scale); 
-        
-        // Vị trí: Đặt ở trung tâm Viewport
-        float startX = SCREEN_CENTER_X; 
-        float startY = SCREEN_CENTER_Y; 
-        
-        // Tỷ lệ di chuyển: (0.1f, 1.0f)
-        _parallaxNode->addChild(bgFar, -1, Vec2(0.1f, 1.0f), Vec2(startX, startY));
-    }
-    
-    // LỚP BACKGROUND 2 (bgNear): CHỈ 1 ẢNH (Không lặp lại)
-    auto bgNear = Sprite::create("sprites/backgrounds/mountains.png");
-    if (bgNear) {
-        // Đặt anchor point ở góc trái dưới (0, 0)
-        bgNear->setAnchorPoint(Vec2(0.f, 0.f)); 
-        
-        // Vị trí X: Bắt đầu từ mép trái màn hình
-        float startX = _origin.x; 
-        // Vị trí Y: Neo theo _groundTop
-        float startY = L.groundTop - 100.f; 
+    auto texFar = Director::getInstance()->getTextureCache()->addImage("sprites/backgrounds/background.png");
+if (texFar) {
+    float texW = texFar->getContentSize().width;
+    float texH = texFar->getContentSize().height;
 
-        // Tỷ lệ di chuyển: (0.5f, 1.0f)
-        _parallaxNode->addChild(bgNear, 0, Vec2(0.5f, 1.0f), Vec2(startX, startY)); 
+    // ✅ chỉ scale theo chiều cao
+    float scale = _vs.height / texH;
+
+    float scaledW = texW * scale;
+
+    // ✅ tính số sprite cần để che toàn map
+    float mapW = _vs.width * L.segments;
+    int repeatCount = std::ceil(mapW / scaledW) + 1;  // +1 để tránh hở
+
+    for (int i = 0; i < repeatCount; ++i) {
+        auto s = Sprite::createWithTexture(texFar);
+        s->setAnchorPoint(Vec2(0, 0));
+
+        s->setScale(scale);  // chỉ scale Y nhưng giữ tỉ lệ => width gốc
+        float startX = i * scaledW;
+        float startY = 0;  // ghép từ đáy
+
+        _parallaxNode->addChild(s, -3, Vec2(0.1f, 1.0f), Vec2(startX, startY));
     }
+}
+
+auto texFar2 = Director::getInstance()->getTextureCache()->addImage("sprites/backgrounds/mountains.png");
+if (texFar2) {
+    float texW = texFar2->getContentSize().width;
+    float texH = texFar2->getContentSize().height;
+
+    float scale = _vs.height / texH;
+    float scaledW = texW * scale;
+
+    float mapW = _vs.width * L.segments;
+    int repeatCount = std::ceil(mapW / scaledW) + 1;
+
+    for (int i = 0; i < repeatCount; ++i) {
+        auto s = Sprite::createWithTexture(texFar2);
+        s->setAnchorPoint(Vec2(0, 0));
+        s->setScale(scale);
+
+        float startX = i * scaledW;
+        float startY = 0;
+
+        _parallaxNode->addChild(s, -2, Vec2(0.3f, 1.0f), Vec2(startX, startY));
+    }
+}
+
+auto texFar3 = Director::getInstance()->getTextureCache()->addImage("sprites/backgrounds/mountains.png");
+if (texFar3) {
+    float texW = texFar3->getContentSize().width;
+    float texH = texFar3->getContentSize().height;
+
+    float scale = _vs.height / texH;
+    float scaledW = texW * scale;
+
+    float mapW = _vs.width * L.segments;
+    int repeatCount = std::ceil(mapW / scaledW) + 1;
+
+    for (int i = 0; i < repeatCount; ++i) {
+        auto s = Sprite::createWithTexture(texFar3);
+        s->setAnchorPoint(Vec2(0, 0));
+        s->setScale(scale);
+
+        float startX = i * scaledW;
+        float startY = 0;
+
+        _parallaxNode->addChild(s, -1, Vec2(0.3f, 1.0f), Vec2(startX, startY));
+    }
+}
+
+
+
+
+     auto texNear = Director::getInstance()->getTextureCache()->addImage("sprites/backgrounds/castle.png");
+if (texNear) {
+    float texW = texNear->getContentSize().width;
+    float texH = texNear->getContentSize().height;
+
+    float scale = _vs.height / texH;
+    float scaledW = texW * scale;
+
+    float mapW = _vs.width * L.segments;
+    int repeatCount = std::ceil(mapW / scaledW) + 1;
+
+    for (int i = 0; i < repeatCount; ++i) {
+        auto s = Sprite::createWithTexture(texNear);
+        s->setAnchorPoint(Vec2(0, 0));
+        s->setScale(scale);
+
+        float startX = i * scaledW;
+        float startY = 0;
+
+        _parallaxNode->addChild(s, 0, Vec2(0.3f, 1.0f), Vec2(startX, startY));
+    }
+}
+
+
+    for (int s=0; s<L.segments; ++s) {
+
+        // ===== Platforms và enemies từng segment =====
 
         float baseX = origin.x + s*vs.width;
         float g     = L.groundTop;
 
-        // auto platform = [&](float xPix, float y, float w){
-        //     return makeSolid(root, Rect(xPix, g+y, w, P_H),
-        //                      Color4F(0.55f,0.58f,0.95f,1));
-        // };
-                const Vec2 PLATFORM_TILE_OFFSET(-15.0f, -22.0f); // Dịch chuyển tất cả tile platform sang phải 10px và xuống 22px
+        const Vec2 PLATFORM_TILE_OFFSET(-10.0f, -17.0f); // Dịch chuyển tất cả tile platform sang phải 10px và xuống 22px
 
 
         auto platform = [&](float xPix, float y, float w){
             return makeSolid(root, Rect(xPix, g+y, w, P_H),
-                             Color4F(0.55f,0.58f,0.95f,1),"sprites/tiles/platform_tile.png", PLATFORM_TILE_OFFSET);
+                             Color4F(0.55f,0.58f,0.95f,1),"sprites/tiles/platform_scale_0.png", PLATFORM_TILE_OFFSET);
         };
         
-        // // !platform giữa
-        // float platformY = L.groundTop + 70.f;
-        // makeSolid(root, Rect(baseX + vs.width*0.40f, platformY, 220.f, 16.f), Color4F(0.55f,0.58f,0.95f,1), "sprites/tiles/platform_tile.png", PLATFORM_TILE_OFFSET);
 
         int   EHP = HP_BY_SEG[s];
         float ESP = SPD_BY_SEG[s];
@@ -225,12 +283,12 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             platform(x3, y3, P_W-10.f);
 
             // trụ cản nho nhỏ cho đỡ trống
-            const Vec2 WALL_TILE_OFFSET(0.0f, -85.0f);
-            makeSolid(root, Rect(baseX+vs.width*0.78f, g, 20, 70), Color4F(0.25f,0.8f,0.25f,1),"sprites/tiles/wall_tile.png", WALL_TILE_OFFSET);
+            const Vec2 WALL_TILE_OFFSET(0.0f, -90.0f);
+            makeSolid(root, Rect(baseX+vs.width*0.78f, g+20, 30, 70), Color4F(0.25f,0.8f,0.25f,1),"sprites/tiles/wall.png", WALL_TILE_OFFSET);
 
             coinLine(root, {baseX + 140, g+120}, 4, 36.f);
             placeUpgrade(root, UT, {x2 + P_W*0.5f, g + y2 + 26.f});
-            placeChest(root, {baseX + vs.width*0.84f, g+36});
+            placeChest(root, {baseX + vs.width*0.84f, g+23});
 
             auto e = spawnGoomba(root, {x2 + P_W*0.5f, g+y2 + 22.f},
                                  {x2-80.f, g+y2 + 22.f}, {x2+80.f, g+y2 + 22.f},
@@ -250,12 +308,14 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             platform(x2, y2, P_W);
 
             // cột đôi
-            makeSolid(root, Rect(baseX+vs.width*0.68f, g, 18, 76), Color4F(0.25f,0.8f,0.25f,1));
-            makeSolid(root, Rect(baseX+vs.width*0.73f, g, 18, 60), Color4F(0.25f,0.8f,0.25f,1));
+            const Vec2 WALL_TILE_OFFSET(0.0f, -90.0f);
+
+            makeSolid(root, Rect(baseX+vs.width*0.68f, g+20, 30, 70), Color4F(0.25f,0.8f,0.25f,1),"sprites/tiles/wall.png", WALL_TILE_OFFSET);
+            makeSolid(root, Rect(baseX+vs.width*0.73f, g+20, 30, 70), Color4F(0.25f,0.8f,0.25f,1),"sprites/tiles/wall.png", WALL_TILE_OFFSET);
 
             coinLine(root, {baseX + 160, g+180}, 4, 36.f);
             placeUpgrade(root, UT, {x1 + P_W*0.5f, g+y1 + 26.f});
-            placeChest(root, {baseX + vs.width*0.82f, g+36});
+            placeChest(root, {baseX + vs.width*0.82f, g+23});
 
             auto e = spawnSpiker(root, {x2 + P_W*0.5f, g+y2 + 22.f},
                                  {x2-90.f, g+y2 + 22.f}, {x2+90.f, g+y2 + 22.f},
@@ -276,7 +336,7 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
 
             coinLine(root, {baseX + 160, g+165}, 5, 34.f);
             placeUpgrade(root, UT, {x1 + P_W*0.3f, g+y1 + 24.f});
-            placeChest(root, {baseX + vs.width*0.80f, g+36});
+            placeChest(root, {baseX + vs.width*0.80f, g+23});
 
             auto e1 = spawnGoomba(root, {x1 + P_W*0.3f, g+y1 + 20.f},
                                   {x1-60.f, g+y1 + 20.f}, {x1+60.f, g+y1 + 20.f},
@@ -299,12 +359,14 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
             platform(x2, y2, P_W-20.f);
 
             // cổng
-            makeSolid(root, Rect(baseX+vs.width*0.20f, g, 22, 96), Color4F(0.25f,0.8f,0.25f,1));
-            makeSolid(root, Rect(baseX+vs.width*0.86f, g, 22, 96), Color4F(0.25f,0.8f,0.25f,1));
+            const Vec2 WALL_TILE_OFFSET(0.0f, -90.0f);
+
+            makeSolid(root, Rect(baseX+vs.width*0.20f, g+20, 30, 70), Color4F(0.25f,0.8f,0.25f,1), "sprites/tiles/wall.png", WALL_TILE_OFFSET);
+            makeSolid(root, Rect(baseX+vs.width*0.86f, g+20, 30, 70), Color4F(0.25f,0.8f,0.25f,1), "sprites/tiles/wall.png", WALL_TILE_OFFSET);
 
             coinLine(root, {baseX + 120, g+210}, 6, 30.f);
             placeUpgrade(root, UT, {x1 + P_W*0.4f, g+y1 + 26.f});
-            placeChest(root, {baseX + vs.width*0.84f, g+36});
+            placeChest(root, {baseX + vs.width*0.84f, g+23});
 
             auto e = spawnSpiker(root, {x1 + P_W*0.4f, g+y1 + 22.f},
                                  {x1-90.f, g+y1 + 22.f}, {x1+90.f, g+y1 + 22.f},
@@ -327,7 +389,7 @@ BuildResult buildLevel1(Node* root, const Size& vs, const Vec2& origin) {
 
             coinLine(root, {baseX + 140, g+150}, 6, 34.f);
             placeUpgrade(root, UT, {x1 + P_W*0.4f, g+y1 + 26.f});
-            placeChest(root, {baseX + vs.width*0.60f, g+36});
+            placeChest(root, {baseX + vs.width*0.60f, g+23});
 
             auto boss = BossGolem::create();
             boss->enablePhysics({baseX + vs.width*0.68f, g + 40.f}, Size(72,72));

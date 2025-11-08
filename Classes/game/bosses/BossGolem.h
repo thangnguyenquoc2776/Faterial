@@ -1,5 +1,9 @@
 #pragma once
 #include "game/Enemy.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
+
 class Player;
 
 class BossGolem : public Enemy {
@@ -17,4 +21,6 @@ private:
 
     float _cd = 1.0f;   // cooldown nội bộ luân phiên pattern
     bool  _dying = false; // tránh gọi chết nhiều lần trong cùng 1 frame
+
+    cocos2d::Sprite* _sprite = nullptr;
 };

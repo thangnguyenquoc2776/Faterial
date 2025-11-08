@@ -38,11 +38,12 @@ bool BossGolem::init() {
 
         _sprite = Sprite::create("sprites/boss/idle/idle_1.png");
         _sprite->setAnchorPoint(Vec2(0.5f, 0.5f)); // chân ở dưới
-        _sprite->setPosition(Vec2(0.f, 150.f));
+        // _sprite->setPosition(Vec2(0.f, 150.f));
+        _sprite->setPositionY(150.f);
         _sprite->setScale(2.5f);
         addChild(_sprite, 1);
 
-    auto size = _sprite->getContentSize() * _sprite->getScale();
+    auto size = _sprite->getContentSize() * _sprite->getScale() * 2.0f;
     _body = PhysicsBody::createBox(size);
     setPhysicsBody(_body);
 
@@ -146,11 +147,30 @@ namespace {
         auto n = Node::create(); n->setPosition(origin);
         n->setName("enemy_proj");
 
-        auto dn = DrawNode::create();
-        dn->drawSolidCircle(Vec2::ZERO, 6.f, 0, 18, Color4F(0.95f,0.4f,0.2f,1));
-        n->addChild(dn);
+        // auto dn = DrawNode::create();
+        // dn->drawSolidCircle(Vec2::ZERO, 6.f, 0, 18, Color4F(0.95f,0.4f,0.2f,1));
+        // n->addChild(dn);
 
-        auto body = PhysicsBody::createCircle(6.f, PhysicsMaterial(0,0,0));
+        auto b = Sprite::create("sprites/boss/fireball/fireball_1.png"); // frame đầu tiên
+        b->setScale(1.5f);
+        n->addChild(b);
+
+        // flip theo hướng
+        if (velocity.x < 0) b->setFlippedX(true);
+
+        // animation
+        Vector<SpriteFrame*> frames;
+        auto firstSize = b->getContentSize();
+        for (int i = 1; i <= 5; i++) {
+            std::string framePath = StringUtils::format("sprites/boss/fireball/fireball_%d.png", i);
+            auto frame = SpriteFrame::create(framePath, Rect(0,0,firstSize.width, firstSize.height));
+            frame->setOriginalSize(firstSize);
+            frames.pushBack(frame);
+        }
+        auto anim = Animation::createWithSpriteFrames(frames, 0.1f);
+        b->runAction(RepeatForever::create(Animate::create(anim)));
+
+        auto body = PhysicsBody::createCircle(firstSize.width / 2 , PhysicsMaterial(0,0,0));
         body->setDynamic(true);
         body->setGravityEnable(false);
         body->setRotationEnable(false);
@@ -172,11 +192,26 @@ namespace {
         auto n = Node::create(); n->setPosition(origin);
         n->setName("enemy_proj");
 
-        auto dn = DrawNode::create();
-        dn->drawSolidCircle(Vec2::ZERO, 5.f, 0, 18, Color4F(0.9f,0.9f,1.f,1));
-        n->addChild(dn);
+        auto b = Sprite::create("sprites/boss/fireball/fireball_1.png"); // frame đầu tiên
+        b->setScale(1.5f);
+        n->addChild(b);
 
-        auto body = PhysicsBody::createCircle(5.f, PhysicsMaterial(0,0,0));
+        // flip theo hướng
+        // if (velocity.x < 0) b->setFlippedX(true);
+
+        // animation
+        Vector<SpriteFrame*> frames;
+        auto firstSize = b->getContentSize();
+        for (int i = 1; i <= 5; i++) {
+            std::string framePath = StringUtils::format("sprites/boss/fireball/fireball_%d.png", i);
+            auto frame = SpriteFrame::create(framePath, Rect(0,0,firstSize.width, firstSize.height));
+            frame->setOriginalSize(firstSize);
+            frames.pushBack(frame);
+        }
+        auto anim = Animation::createWithSpriteFrames(frames, 0.1f);
+        b->runAction(RepeatForever::create(Animate::create(anim)));
+
+        auto body = PhysicsBody::createCircle(firstSize.width / 2, PhysicsMaterial(0,0,0));
         body->setDynamic(true);
         body->setGravityEnable(false);
         body->setRotationEnable(false);
@@ -203,8 +238,103 @@ namespace {
             nullptr));
         return n;
     }
-} // namespace (helpers)
 
+    // Sprite* makeBullet(const Vec2& origin, const Vec2& velocity, float lifeSec = 1.8f) {
+    //     auto b = Sprite::create("sprites/boss/fireball/fireball_1.png"); // frame đầu tiên
+    //     b->setPosition(origin);
+    //     b->setScale(2.5f);
+    //     b->setName("enemy_proj");
+
+    //     // flip theo hướng
+    //     if (velocity.x < 0) b->setFlippedX(true);
+
+    //     // animation
+    //     Vector<SpriteFrame*> frames;
+    //     auto firstSize = b->getContentSize();
+    //     for (int i = 1; i <= 6; i++) {
+    //         std::string framePath = StringUtils::format("sprites/boss/fireball/fireball_%d.png", i);
+    //         auto frame = SpriteFrame::create(framePath, Rect(0,0,firstSize.width, firstSize.height));
+    //         frame->setOriginalSize(firstSize);
+    //         frames.pushBack(frame);
+    //     }
+    //     auto anim = Animation::createWithSpriteFrames(frames, 0.1f);
+    //     b->runAction(RepeatForever::create(Animate::create(anim)));
+
+    //     // physics
+    //     auto body = PhysicsBody::createCircle(6.f, PhysicsMaterial(0,0,0));
+    //     body->setDynamic(true);
+    //     body->setGravityEnable(false);
+    //     body->setRotationEnable(false);
+    //     setEnemyProjMasks(body);
+    //     b->addComponent(body);
+    //     body->setVelocity(velocity);
+    //     body->setLinearDamping(0.02f);
+
+    //     // tự hủy
+    //     b->runAction(Sequence::create(
+    //         DelayTime::create(std::max(0.05f, lifeSec)),
+    //         CallFunc::create([b]{ b->removeFromParent(); }),
+    //         nullptr));
+
+    //     return b;
+    // }
+
+//     Sprite* makeHoming(const Vec2& origin, Node* target,
+//                     float speed = 240.f, float turnRate = 6.0f, float lifeSec = 2.2f) {
+//         auto b = Sprite::create("sprites/boss/fireball/fireball_1.png"); // frame đầu tiên
+//         b->setPosition(origin);
+//         b->setName("enemy_proj");
+//         b->setScale(2.0f);
+
+//         // animation
+//         Vector<SpriteFrame*> frames;
+//         auto firstSize = b->getContentSize();
+//         for(int i=1;i<=6;i++){
+//             std::string path = StringUtils::format("sprites/boss/fireball/fireball_%d.png", i);
+//             auto frame = SpriteFrame::create(path, Rect(0,0,firstSize.width,firstSize.height));
+//             frame->setOriginalSize(firstSize);
+//             frames.pushBack(frame);
+//         }
+//         b->runAction(RepeatForever::create(Animate::create(Animation::createWithSpriteFrames(frames,0.1f))));
+
+//         // physics
+//         auto body = PhysicsBody::createCircle(5.f, PhysicsMaterial(0,0,0));
+//         body->setDynamic(true);
+//         body->setGravityEnable(false);
+//         body->setRotationEnable(false);
+//         setEnemyProjMasks(body);
+//         b->addComponent(body);
+
+//         // flip ban đầu theo hướng target
+//         if(target) b->setFlippedX((target->getPosition().x - origin.x) < 0);
+
+//         // homing logic
+//         b->schedule([b, target, speed, turnRate](float dt){
+//             auto body = b->getPhysicsBody();
+//             if(!body || !target || !target->getParent()) return;
+
+//             Vec2 dir = (target->getPosition() - b->getPosition()).getNormalized();
+//             Vec2 desired = dir * speed;
+//             Vec2 v = body->getVelocity();
+//             float alpha = clampf(turnRate * dt, 0.f, 1.f);
+//             v = v * (1.f - alpha) + desired * alpha;
+//             if (v.lengthSquared() < speed*speed*0.25f) v = desired;
+//             body->setVelocity(v);
+
+//             // update flip theo hướng vận tốc
+//             b->setFlippedX(v.x < 0);
+//         }, "enemy.homing");
+
+//         // tự hủy
+//         b->runAction(Sequence::create(
+//             DelayTime::create(std::max(0.05f, lifeSec)),
+//             CallFunc::create([b]{ b->removeFromParent(); }),
+//             nullptr));
+
+//         return b;
+// }
+
+} 
 // =====================
 // AI patterns
 // =====================

@@ -14,7 +14,7 @@
 #include "game/weapon/Slash.h"
 
 // Âm thanh
-#include "audio/Sound.h"                        // dùng snd::sfxShoot(), snd::sfxSlash()
+#include "audio/Sound.h"                        
 #include "audio/include/AudioEngine.h"          // fallback SFX cho jump/land/hurt
 #include "platform/CCFileUtils.h"
 
@@ -24,35 +24,35 @@
 
 using namespace cocos2d;
 
-// ==============================
-// SFX helpers (fallback by stem)
-// ==============================
-namespace {
-    using AE = cocos2d::AudioEngine;
+// // ==============================
+// // SFX helpers (fallback by stem)
+// // ==============================
+// namespace {
+//     using AE = cocos2d::AudioEngine;
 
-    // Cho phép chỉ truyền "gốc tên" (stem), tự tìm .wav/.mp3/.ogg nếu tồn tại
-    inline std::string _pickAudio(const char* stem) {
-        static const char* exts[] = { ".wav", ".mp3", ".ogg" };
-        auto* fu = FileUtils::getInstance();
-        for (auto* ext : exts) {
-            std::string p = std::string(stem) + ext;
-            if (fu->isFileExist(p)) return p;
-        }
-        CCLOG("SND missing: %s.(wav|mp3|ogg) not found", stem);
-        return {};
-    }
+//     // Cho phép chỉ truyền "gốc tên" (stem), tự tìm .wav/.mp3/.ogg nếu tồn tại
+//     inline std::string _pickAudio(const char* stem) {
+//         static const char* exts[] = { ".wav", ".mp3", ".ogg" };
+//         auto* fu = FileUtils::getInstance();
+//         for (auto* ext : exts) {
+//             std::string p = std::string(stem) + ext;
+//             if (fu->isFileExist(p)) return p;
+//         }
+//         CCLOG("SND missing: %s.(wav|mp3|ogg) not found", stem);
+//         return {};
+//     }
 
-    inline void _sfxOptional(const char* stem, float vol = 0.9f) {
-        if (!stem) return;
-        std::string f = _pickAudio(stem);
-        if (!f.empty()) AE::play2d(f, false, vol);
-    }
+//     inline void _sfxOptional(const char* stem, float vol = 0.9f) {
+//         if (!stem) return;
+//         std::string f = _pickAudio(stem);
+//         if (!f.empty()) AE::play2d(f, false, vol);
+//     }
 
-    // Tên gốc (stem) cho các SFX thêm mới:
-    constexpr const char* SFX_JUMP = "audio/sfx_jump";
-    constexpr const char* SFX_LAND = "audio/sfx_land";
-    constexpr const char* SFX_HURT = "audio/sfx_hurt";
-}
+//     // Tên gốc (stem) cho các SFX thêm mới:
+//     constexpr const char* SFX_JUMP = "audio/sfx_jump";
+//     constexpr const char* SFX_LAND = "audio/sfx_land";
+//     constexpr const char* SFX_HURT = "audio/sfx_hurt";
+// }
 
 // ==============================
 
@@ -70,7 +70,7 @@ bool Player::init() {
 
     _sprite = Sprite::create("sprites/player/idle/idle_1.png");
     _sprite->setAnchorPoint(Vec2(0.5f, 0.5f));
-    _sprite->setPositionY(_colSize.height * 0.5f);
+    _sprite->setPositionY(_colSize.height * 0.65f);
     _sprite->setScale(1.4f);
     addChild(_sprite, 1);
 
@@ -160,14 +160,14 @@ void Player::jump() {
 
     if (_footContacts > 0) {
         _body->applyImpulse(Vec2(0, impulse));
-        _sfxOptional(SFX_JUMP);       // 🔊 nhảy từ đất
+        snd::sfxJump();       // 🔊 nhảy từ đất
         return;
     }
     if (_airJumpsMax > 0 && _airJumpsUsed < _airJumpsMax) {
         _airJumpsUsed++;
         _body->setVelocity(Vec2(_body->getVelocity().x, 0));
         _body->applyImpulse(Vec2(0, impulse * 0.92f));
-        _sfxOptional(SFX_JUMP);       // 🔊 nhảy trên không
+        snd::sfxJump();          // 🔊 nhảy trên không
     }
 }
 
@@ -176,7 +176,7 @@ void Player::incFoot(int delta) {
     _footContacts = std::max(0, _footContacts + delta);
     if (prev==0 && _footContacts>0) {
         _airJumpsUsed = 0;            // chạm đất -> reset
-        _sfxOptional(SFX_LAND);       // 🔊 chạm đất
+        // _sfxOptional(SFX_LAND);       // 🔊 chạm đất
     }
 }
 
@@ -187,7 +187,7 @@ void Player::hurt(int dmg) {
     if (invincible() || !_body) return;
     _hp = std::max(0, _hp - std::max(1, dmg));
     _invincibleT = 0.8f;
-    _sfxOptional(SFX_HURT);           // 🔊 bị thương
+    // _sfxOptional(SFX_HURT);           // 🔊 bị thương
 
     const float dir = (_facing > 0 ? -1.f : +1.f);
     _body->applyImpulse(Vec2(200.f * dir, 260.f));
@@ -205,7 +205,7 @@ void Player::doShoot(){
             float spread = 0.08f;
             for (int i=0;i<count;i++){
                 float offY = (i - (count-1)*0.5f) * 8.0f;
-                Vec2 origin = getPosition() + Vec2(dir * 18.f, halfH() * 0.25f + offY);
+                Vec2 origin = getPosition() + Vec2(dir * 18.f, halfH() * 1.5f + offY);
                 Vec2 vel(700.f * dir, (i - (count-1)*0.5f) * 120.f * spread);
                 auto b = Bullet::create(origin, vel, 1.5f);
                 if (getParent() && b) getParent()->addChild(b, 6);
@@ -297,6 +297,16 @@ void Player::update(float dt) {
 
     v.y = std::max(v.y, -_maxFall);
     _body->setVelocity(v);
+
+    bool runningNow = (grounded && std::abs(_moveDir.x) > 1e-3f);
+    //! PLAY RUNNING SFX
+    if (runningNow && !_wasRunning) snd::sfxRun(); 
+    // !STOP RUNNING SFX
+    if (!runningNow && _wasRunning) {
+        snd::stopSfxRun();
+    }
+    _wasRunning = runningNow;
+
 
     // chọn anim
     if (isDead()) nextAnim = "die";

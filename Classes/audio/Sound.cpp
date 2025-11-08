@@ -13,13 +13,20 @@ namespace {
     int   s_bgmId  = -1;
     float s_music  = 0.8f;
     float s_sfx    = 0.8f;
+    int   s_runId  = -1;
     std::string s_bgmFile;
 
-    // Cho phép chỉ đặt "gốc tên" (không đuôi) trong Resources/audio/
+    //! Cho phép chỉ đặt "gốc tên" (không đuôi) trong Resources/audio/
     static const char* kBgmMain = "audio/bgm_main";
-    static const char* kSlash   = "audio/sfx_slash";
-    static const char* kShoot   = "audio/sfx_shoot";
-    static const char* kPickup  = "audio/sfx_pickup";
+    static const char* kSlash   = "audio/sfx_slash_hit";
+    static const char* kSlash2  = "audio/sfx_slash_nothit";
+    static const char* kShoot   = "audio/sfx_power_slash";
+    static const char* kPickup  = "audio/sfx_pickup_coin";
+    static const char* kRun     = "audio/sfx_run_boost";
+    static const char* kJump    = "audio/jump";
+    static const char* kStar    = "audio/collect_star";
+    static const char* kUpgrade = "audio/pickup_upgrade";
+
 
     static std::string pickExisting(const std::string& stem) {
         static const char* exts[3] = { ".wav", ".mp3", ".ogg" };
@@ -49,6 +56,12 @@ void snd::init() {
     p = pickExisting(kSlash);   if (!p.empty()) AE::preload(p);
     p = pickExisting(kShoot);   if (!p.empty()) AE::preload(p);
     p = pickExisting(kPickup);  if (!p.empty()) AE::preload(p);
+    p = pickExisting(kBgmMain); if (!p.empty()) AE::preload(p);
+    p = pickExisting(kRun);     if (!p.empty()) AE::preload(p);
+    p = pickExisting(kJump);    if (!p.empty()) AE::preload(p);
+    p = pickExisting(kSlash2);  if (!p.empty()) AE::preload(p);
+    p = pickExisting(kStar);    if (!p.empty()) AE::preload(p);
+    p = pickExisting(kUpgrade); if (!p.empty()) AE::preload(p);
 }
 
 void snd::setVolumes(float music, float sfx) {
@@ -85,3 +98,20 @@ void snd::stopBgm() {
 void snd::sfxSlash() { play2dSafe(pickExisting(kSlash),  false, s_sfx); }
 void snd::sfxShoot() { play2dSafe(pickExisting(kShoot),  false, s_sfx); }
 void snd::sfxCoin()  { play2dSafe(pickExisting(kPickup), false, s_sfx); }
+void snd::sfxJump()  { play2dSafe(pickExisting(kJump),   false, s_sfx); }
+void snd::sfxSlash2()  { play2dSafe(pickExisting(kSlash2),   false, s_sfx); }
+void snd::sfxStar()  { play2dSafe(pickExisting(kStar),   false, s_sfx); }
+void snd::sfxUpgrade()  { play2dSafe(pickExisting(kUpgrade),   false, s_sfx); }
+
+void snd::sfxRun() {
+    if (s_runId != -1) return;
+    s_runId = play2dSafe(pickExisting(kRun), true, s_sfx);
+}
+
+void snd::stopSfxRun() {
+    if (s_runId != -1) {
+        AE::stop(s_runId);
+        s_runId = -1;
+    }
+}
+

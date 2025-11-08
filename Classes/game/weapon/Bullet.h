@@ -2,6 +2,9 @@
 #include "cocos2d.h"
 #include "game/Entity.h"
 #include "physics/PhysicsDefs.h"
+#include "2d/CCSprite.h"
+#include "2d/CCAnimation.h"
+#include "2d/CCAnimationCache.h"
 
 class Bullet : public Entity {
 public:
@@ -14,4 +17,7 @@ public:
 
 protected:
     bool init() override { return Entity::init(); }
+
+private:
+    cocos2d::Sprite* _sprite;
 };

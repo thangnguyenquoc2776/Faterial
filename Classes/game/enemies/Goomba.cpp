@@ -9,8 +9,8 @@ bool Goomba::init(){
     
     // TẠO SPRITE CHO RIÊNG GOOMBA
     _sprite = Sprite::create("sprites/skeleton1/idle/idle_1.png");
-     _sprite->setScale(1.5f); // tùy chỉnh kích cỡ hiển thị
-    _sprite->setPosition(Vec2(0.f, 0.5f));
+    _sprite->setScale(1.5f); // tùy chỉnh kích cỡ hiển thị
+    _sprite->setPositionY(16.f); // tùy chỉnh vị trí hiển thị nếu cần
     addChild(_sprite, 1);
     return true;
 }

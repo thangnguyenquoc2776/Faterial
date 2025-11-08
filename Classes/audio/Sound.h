@@ -18,4 +18,11 @@ namespace snd {
     void sfxSlash();
     void sfxShoot();
     void sfxCoin();
+    void sfxRun();
+    void stopSfxRun();
+    void sfxJump();
+    void sfxSlash2();
+    void sfxStar();
+    void sfxUpgrade();
+
 }

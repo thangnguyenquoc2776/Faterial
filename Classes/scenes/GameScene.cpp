@@ -37,6 +37,7 @@ static inline bool hasCat(cocos2d::Node* n, phys::Mask catMask) {
     return body && ((static_cast<phys::Mask>(body->getCategoryBitmask()) & catMask) != 0u);
 }
 
+//!PICKUP SFX
 static inline void playPickupSfx() { snd::sfxCoin(); }
 
 // Overlay chữ giữa màn hình theo vị trí camera mặc định
@@ -270,7 +271,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         segByItem = std::max(0, std::min(segByItem, _segmentCount - 1));
 
         if (auto star = dynamic_cast<Star*>(item)) {
-            playPickupSfx();
+            snd::sfxStar();
             _setStars(_starsHave + 1, _starsNeed);
             _addScore(50);
 
@@ -297,7 +298,7 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         if (auto up = dynamic_cast<Upgrade*>(item)) {
             using T = Upgrade::Type;
             const auto t = up->type();
-            playPickupSfx();
+            snd::sfxUpgrade();
             _addScore(25);
 
             if (_player) {
@@ -326,7 +327,8 @@ bool GameScene::_onContactBegin(PhysicsContact& c) {
         }
 
         if (auto chest = dynamic_cast<Chest*>(item)) {
-            playPickupSfx();
+            // playPickupSfx();
+            snd::sfxUpgrade();
             chest->open();
             return false;
         }

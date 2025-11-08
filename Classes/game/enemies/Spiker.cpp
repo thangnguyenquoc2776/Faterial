@@ -9,7 +9,9 @@ bool Spiker::init(){
     
     // TẠO SPRITE CHO RIÊNG SPIKER
     _sprite = Sprite::create("sprites/fireworm/idle/idle_1.png"); // Thay bằng đường dẫn Sprite của Spiker
-     _sprite->setScale(1.4f); // tùy chỉnh kích cỡ hiển thị
+
+    _sprite->setScale(1.4f); // tùy chỉnh kích cỡ hiển thị
+    _sprite->setPositionY(-3.f); // tùy chỉnh vị trí hiển thị nếu cần
     addChild(_sprite, 1);
     
     // Tạo PhysicsBody và các logic vật lý (nếu cần)
