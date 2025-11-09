@@ -99,41 +99,130 @@ void HUDLayer::_anchorToCamera() {
 // ======================================================
 // Layout
 // ======================================================
+// void HUDLayer::_layout() {
+//     const auto vs = Director::getInstance()->getVisibleSize();
+
+//     // ----- Trái trên -----
+//     _lLives->setAnchorPoint({0.f, 1.f});
+//     _lLives->setPosition({MARGIN, vs.height - MARGIN});
+
+//     // HP ngay dưới Lives
+//     const float hpX = MARGIN;
+//     const float hpY = vs.height - (MARGIN + LINE_H);
+//     _hpBarBG->clear();
+//     _hpBarBG->drawSolidRect({hpX - 2, hpY - 2}, {hpX + HP_W + 2, hpY + HP_H + 2}, Color4F(0,0,0,0.6f));
+//     _hpBarFG->setPosition(Vec2::ZERO);
+
+//     _lHPText->setAnchorPoint({0.f, 0.5f});
+//     _lHPText->setPosition({hpX, hpY - 18.f});
+
+//     // ----- Phải trên (xếp dọc) -----
+//     const float rightX = vs.width - MARGIN;
+//     float topY = vs.height - MARGIN;
+
+//     _lScore->setAnchorPoint({1.f, 1.f});
+//     _lScore->setPosition({rightX, topY});
+
+//     topY -= LINE_H;
+//     _lStars->setAnchorPoint({1.f, 1.f});
+//     _lStars->setPosition({rightX, topY});
+
+//     topY -= LINE_H;
+//     _lZone->setAnchorPoint({1.f, 1.f});
+//     _lZone->setPosition({rightX, topY});
+
+//     // ----- Buff strip: top-center (đổi vị trí tại đây nếu muốn) -----
+//     _layoutBuffs();
+
+//     _redrawHP();
+// }
+
+
 void HUDLayer::_layout() {
     const auto vs = Director::getInstance()->getVisibleSize();
 
-    // ----- Trái trên -----
-    _lLives->setAnchorPoint({0.f, 1.f});
-    _lLives->setPosition({MARGIN, vs.height - MARGIN});
-
-    // HP ngay dưới Lives
-    const float hpX = MARGIN;
-    const float hpY = vs.height - (MARGIN + LINE_H);
-    _hpBarBG->clear();
-    _hpBarBG->drawSolidRect({hpX - 2, hpY - 2}, {hpX + HP_W + 2, hpY + HP_H + 2}, Color4F(0,0,0,0.6f));
-    _hpBarFG->setPosition(Vec2::ZERO);
-
-    _lHPText->setAnchorPoint({0.f, 0.5f});
-    _lHPText->setPosition({hpX, hpY - 18.f});
-
-    // ----- Phải trên (xếp dọc) -----
+    // chung
     const float rightX = vs.width - MARGIN;
     float topY = vs.height - MARGIN;
 
-    _lScore->setAnchorPoint({1.f, 1.f});
-    _lScore->setPosition({rightX, topY});
+    //
+    // ----- HP: đặt ở top-left -----
+    //
+    const float hpX = MARGIN;                 // x của trái khung HP
+    const float hpTop = topY;                 // y của mép trên khu vực trên cùng
+    const float hpBottom = hpTop - LINE_H;    // y của đáy thanh HP (tính để dễ đặt lives dưới)
+
+    // vẽ / reset khung HP (đen mờ)
+    _hpBarBG->clear();
+    // drawSolidRect expects bottom-left, top-right (the same style you used earlier)
+    _hpBarBG->drawSolidRect(
+        Vec2(hpX - 2.f, hpBottom - 2.f),               // bottom-left
+        Vec2(hpX + HP_W + 2.f, hpBottom + HP_H + 2.f), // top-right
+        Color4F(0, 0, 0, 0.6f)
+    );
+    _hpBarBG->setLocalZOrder(0);
+
+    // đặt thanh đỏ (FG) chính xác nằm trong khung
+    // Hai khả năng thường gặp: FG là DrawNode hoặc FG là ProgressTimer
+    if (auto dn = dynamic_cast<DrawNode*>(_hpBarFG)) {
+        // Nếu dùng DrawNode: xóa rồi vẽ rect kích thước HP_W x HP_H
+        dn->clear();
+        dn->drawSolidRect(
+            Vec2(hpX, hpBottom),                      // bottom-left (trong khung)
+            Vec2(hpX + HP_W, hpBottom + HP_H),        // top-right
+            Color4F(1, 0, 0, 1.0f)
+        );
+        dn->setPosition(Vec2::ZERO); // drawnode dùng toạ độ thế hệ cha, nên giữ 0
+    } else if (auto pt = dynamic_cast<ProgressTimer*>(_hpBarFG)) {
+        // Nếu dùng ProgressTimer: đặt vị trí và kích thước hợp lý, rồi setPercentage khi update HP
+        // giả sử ProgressTimer có child Sprite cỡ HP_W x HP_H
+        pt->setPosition(Vec2(hpX, hpBottom + HP_H * 0.5f)); // đặt center nếu anchor là (0.5,0.5)
+        pt->setAnchorPoint(Vec2(0.f, 0.5f)); // cố định cạnh trái nếu muốn
+        pt->setLocalZOrder(1);
+        // NOTE: setPercentage(...) sẽ được gọi khi update HP chứ không ở layout
+    } else {
+        // fallback: nếu FG là Node chứa sprite
+        _hpBarFG->setPosition(Vec2(hpX, hpBottom));
+        _hpBarFG->setLocalZOrder(1);
+    }
+
+    // chữ "HP" hoặc số HP (ở bên dưới thanh máu)
+    _lHPText->setAnchorPoint(Vec2(0.f, 1.f)); // neo ở trên-trái của text
+    _lHPText->setPosition(Vec2(hpX, hpBottom - 4.f));
+    _lHPText->setLocalZOrder(2);
+
+    //
+    // ----- Lives: đặt xuống dưới thanh HP để không trùng ----- 
+    //
+    // Đặt lives nằm bên dưới khung HP, cách một khoảng nhỏ
+    const float livesY = hpBottom - 25.f; // tăng/giảm số 8 để chỉnh khoảng cách
+    _lLives->setAnchorPoint(Vec2(0.f, 1.f)); // neo ở trên-trái
+    _lLives->setPosition(Vec2(hpX, livesY));
+    _lLives->setLocalZOrder(2);
+
+    //
+    // ----- Phải trên (xếp dọc) -----
+    //
+    // bắt đầu lại topY (nếu cần dùng tiếp các element top-right)
+    topY = vs.height - MARGIN;
+    _lScore->setAnchorPoint(Vec2(1.f, 1.f));
+    _lScore->setPosition(Vec2(rightX, topY));
+    _lScore->setLocalZOrder(2);
 
     topY -= LINE_H;
-    _lStars->setAnchorPoint({1.f, 1.f});
-    _lStars->setPosition({rightX, topY});
+    _lStars->setAnchorPoint(Vec2(1.f, 1.f));
+    _lStars->setPosition(Vec2(rightX, topY));
+    _lStars->setLocalZOrder(2);
 
     topY -= LINE_H;
-    _lZone->setAnchorPoint({1.f, 1.f});
-    _lZone->setPosition({rightX, topY});
+    _lZone->setAnchorPoint(Vec2(1.f, 1.f));
+    _lZone->setPosition(Vec2(rightX, topY));
+    _lZone->setLocalZOrder(2);
 
-    // ----- Buff strip: top-center (đổi vị trí tại đây nếu muốn) -----
+    // ----- Buff strip: top-center -----
     _layoutBuffs();
 
+    // redraw/refresh nếu cần
     _redrawHP();
 }
 
