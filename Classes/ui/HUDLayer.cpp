@@ -11,6 +11,10 @@ namespace {
 bool HUDLayer::init() {
     if (!Layer::init()) return false;
 
+    this->setCameraMask((unsigned short)CameraFlag::USER1, true);
+    this->setCascadeColorEnabled(true);
+    this->setCascadeOpacityEnabled(true);
+
     // Đảm bảo vẽ sau world
     this->setLocalZOrder(9999);
 
@@ -44,11 +48,22 @@ bool HUDLayer::init() {
     _lZone->enableShadow(Color4B(0,0,0,128), Size(1,-1), 1);
     addChild(_lZone);
 
+    auto mask = (unsigned short)CameraFlag::USER1;
+
+    _lLives->setCameraMask(mask);
+    _hpBarBG->setCameraMask(mask);
+    _hpBarFG->setCameraMask(mask);
+    _lHPText->setCameraMask(mask);
+    _lScore->setCameraMask(mask);
+    _lStars->setCameraMask(mask);
+    _lZone->setCameraMask(mask);
+
+
     // Buff timer
     schedule([this](float dt){ tick(dt); }, "hud.tick");
 
     // HUD tự bám camera mặc định
-    scheduleUpdate();
+    // scheduleUpdate();
 
     _layout();
     _redrawHP();
@@ -62,8 +77,8 @@ void HUDLayer::onEnter() {
 }
 
 void HUDLayer::update(float dt) {
-    CC_UNUSED_PARAM(dt);
-    _anchorToCamera(); // giữ HUD luôn dính màn hình
+    // CC_UNUSED_PARAM(dt);
+    // _anchorToCamera(); // giữ HUD luôn dính màn hình
 }
 
 // ======================================================
@@ -203,17 +218,23 @@ int HUDLayer::addBuff(const std::string& name, float durationSec) {
     ui.id = _nextBuffId++;
     ui.dur = durationSec;
     ui.remain = durationSec;
+    
+    // Lấy Camera Mask UI
+    const auto mask = (unsigned short)CameraFlag::USER1;
 
     ui.root = Node::create();
     this->addChild(ui.root);
+    ui.root->setCameraMask(mask); // <--- ĐÃ SỬA: Cố định root
 
     ui.name = Label::createWithSystemFont(name, "Arial", 18);
     ui.name->setColor(Color3B::WHITE);
     ui.name->enableShadow(Color4B(0,0,0,128), Size(1,-1), 1);
     ui.root->addChild(ui.name);
+    ui.name->setCameraMask(mask); // <--- ĐÃ SỬA: Cố định name
 
     ui.bar = DrawNode::create();
     ui.root->addChild(ui.bar);
+    ui.bar->setCameraMask(mask); // <--- ĐÃ SỬA: Cố định bar
 
     _buffs.push_back(ui);
     _layoutBuffs();

@@ -87,15 +87,18 @@ bool GameScene::init() {
     _uiCam = Camera::createOrthographic(_vs.width, _vs.height, -1024.f, 1024.f);
     _uiCam->setCameraFlag(CameraFlag::USER1);
     _uiCam->setDepth(1);
-    _uiCam->setPosition3D(Vec3(_origin.x + _vs.width * 0.5f,
-                               _origin.y + _vs.height * 0.5f, 0.f));
+    // _uiCam->setPosition3D(Vec3(_origin.x + _vs.width * 0.5f, _origin.y + _vs.height * 0.5f, 0.f));
+    // _uiCam->setPosition3D(Vec3(_vs.width * 0.5f, _vs.height * 0.5f, 0.f)); // <--- SỬA LẠI VỊ TRÍ
+    _uiCam->setPosition3D(Vec3(0.f, 0.f, 0.f)); // <--- THỬ ĐẶT VỀ GỐC (0,0)
+    _uiCam->setAnchorPoint(Vec2::ZERO); // <-- Đảm bảo gốc camera là (0,0)
     addChild(_uiCam);
 
     // ===================== HUD =====================
     _hud = HUDLayer::create();
+    _hud->setPosition(Vec2::ZERO); // <--- THÊM DÒNG NÀY!
     addChild(_hud, 100);
     // Áp dụng mask ĐỆ QUY: toàn bộ con của HUD đi theo camera USER1
-    _hud->setCameraMask((unsigned short)CameraFlag::USER1, true);
+    // _hud->setCameraMask((unsigned short)CameraFlag::USER1, true);
 
     // ===================== Build level =====================
     auto L = levels::buildLevel1(this, _vs, _origin);
